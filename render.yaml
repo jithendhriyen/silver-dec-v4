@@ -1,0 +1,22 @@
+# This file is a blueprint for deploying a full-stack application with a Flask backend and a React frontend on Render.
+# It defines two separate services within a single repository (a monorepo).
+
+services:
+  # The Flask backend service
+  - type: web
+    name: backend
+    env: python
+    rootDir: backend # This assumes your backend code is in a 'backend' directory
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python server3.py" # Replace 'app:app' with the name of your Flask app file and app instance
+    healthCheckPath: "/"
+    autoDeploy: true
+
+  # The React frontend service
+  - type: web
+    name: frontend
+    env: static
+    rootDir: frontend # This assumes your frontend code is in a 'frontend' directory
+    buildCommand: "npm install && npm run build"
+    publishPath: "build" # This is the default output directory for a React build
+    autoDeploy: true
