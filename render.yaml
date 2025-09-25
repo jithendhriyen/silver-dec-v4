@@ -16,5 +16,5 @@ services:
     env: static
     rootDir: frontend
     buildCommand: npm install && npm run build
-    publishPath: build
+    staticPublishPath: build
     autoDeploy: true
