@@ -1,5 +1,0 @@
-Flask
-Flask-Cors
-requests
-Werkzeug
-python-magic
