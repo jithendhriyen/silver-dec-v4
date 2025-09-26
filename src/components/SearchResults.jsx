@@ -40,6 +40,7 @@ import {
   FunnelIcon,
   InformationCircleIcon,
   CalendarDaysIcon,
+  Bars3Icon,
 } from '@heroicons/react/24/outline';
 import {
   BookmarkIcon as BookmarkSolidIcon,
@@ -125,9 +126,11 @@ const SearchResults = ({ darkMode }) => {
   const [groupToRename, setGroupToRename] = useState(null);
   const [renameGroupName, setRenameGroupName] = useState('');
 
-  // Sidebar states
+  // Mobile-specific states
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('history');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Fullscreen preview state
   const [fullscreen, setFullscreen] = useState({
@@ -139,6 +142,27 @@ const SearchResults = ({ darkMode }) => {
 
   const currentUrl = window.location.href;
   const savedCids = useRef(new Set());
+
+  // Mobile detection and resize handler
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [sidebarOpen]);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setSidebarOpen(false);
+  }, [location.pathname, location.search]);
 
   // Enhanced folder navigation functions
   const buildPathBreadcrumbs = () => {
@@ -344,9 +368,9 @@ const SearchResults = ({ darkMode }) => {
       hiddenItems,
       totalItems: entries.length
     };
-  };
+  }
 
-  // Enhanced folder item component with FIXED size display
+  // Enhanced folder item component with mobile responsiveness
   const FolderItem = ({ item, index }) => {
     const isSelected = selectedItems.has(item.name);
     const fileInfo = getFileTypeInfo(item);
@@ -382,7 +406,7 @@ const SearchResults = ({ darkMode }) => {
       setSelectedItems(newSelected);
     };
 
-    // FIXED: Get proper file size display with priority handling
+    // Get proper file size display with priority handling
     const getDisplaySize = () => {
       if (item.isDir) {
         // For directories, show "Folder" or item count if available
@@ -413,11 +437,12 @@ const SearchResults = ({ darkMode }) => {
       return item.isDir ? 'Folder' : 'Unknown size';
     };
 
+    // Mobile-responsive list view
     if (viewMode === 'list') {
       return (
         <div
           key={item.name}
-          className={`group flex items-center p-3 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
+          className={`group flex items-center p-3 sm:p-4 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
             isSelected 
               ? darkMode 
                 ? 'bg-blue-600/20 border-blue-500/50 shadow-lg' 
@@ -428,48 +453,50 @@ const SearchResults = ({ darkMode }) => {
           }`}
           onClick={handleItemClick}
         >
+          {/* Mobile: Hide checkbox on small screens or make it smaller */}
           <input
             type="checkbox"
             checked={isSelected}
             onChange={handleItemSelect}
-            className="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
+            className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2`}
             onClick={e => e.stopPropagation()}
           />
           
-          <div className={`flex-shrink-0 mr-4 p-2 rounded-lg ${fileInfo.bgColor}`}>
-            <IconComponent className={`w-5 h-5 ${fileInfo.color}`} />
+          <div className={`flex-shrink-0 mr-3 sm:mr-4 p-2 rounded-lg ${fileInfo.bgColor}`}>
+            <IconComponent className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} ${fileInfo.color}`} />
           </div>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
-              <p className={`font-medium truncate ${
+              <p className={`font-medium truncate text-sm sm:text-base ${
                 item.isDir ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'
               }`}>
                 {item.name}
               </p>
-              {item.isDir && <ChevronRightIcon className="w-4 h-4 text-gray-400" />}
+              {item.isDir && <ChevronRightIcon className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />}
             </div>
             
-            <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center space-x-2 sm:space-x-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               <span className="font-medium">{getDisplaySize()}</span>
               {!item.isDir && item.extension && (
                 <>
-                  <span>•</span>
-                  <span className="uppercase text-xs font-mono">
+                  <span className="hidden sm:inline">•</span>
+                  <span className="uppercase text-xs font-mono hidden sm:inline">
                     {item.extension.replace('.', '')}
                   </span>
                 </>
               )}
               {item.modified && (
                 <>
-                  <span>•</span>
-                  <span>{new Date(item.modified).toLocaleDateString()}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline">{new Date(item.modified).toLocaleDateString()}</span>
                 </>
               )}
             </div>
           </div>
           
-          <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Mobile: Show fewer action buttons */}
+          <div className="flex items-center space-x-1 sm:space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
             {!item.isDir && (
               <button
                 onClick={(e) => {
@@ -483,10 +510,10 @@ const SearchResults = ({ darkMode }) => {
                   fullPath += '/' + item.name;
                   initiateCustomDownload(fullPath, item.name);
                 }}
-                className="p-2 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                className={`p-1.5 sm:p-2 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors`}
                 title="Download"
               >
-                <ArrowDownTrayIcon className="w-4 h-4 text-blue-500" />
+                <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500" />
               </button>
             )}
             <button
@@ -494,21 +521,21 @@ const SearchResults = ({ darkMode }) => {
                 e.stopPropagation();
                 // Add info modal or action here
               }}
-              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
+              className="p-1.5 sm:p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
               title="Info"
             >
-              <InformationCircleIcon className="w-4 h-4 text-gray-500" />
+              <InformationCircleIcon className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
             </button>
           </div>
         </div>
       );
     }
 
-    // Grid view
+    // Mobile-responsive grid view
     return (
       <div
         key={item.name}
-        className={`group relative p-4 rounded-xl border transition-all duration-200 hover:shadow-lg cursor-pointer transform hover:scale-[1.02] ${
+        className={`group relative p-3 sm:p-4 rounded-xl border transition-all duration-200 hover:shadow-lg cursor-pointer transform hover:scale-[1.02] ${
           isSelected 
             ? darkMode 
               ? 'bg-blue-600/20 border-blue-500/50 shadow-xl scale-[1.02]' 
@@ -523,18 +550,18 @@ const SearchResults = ({ darkMode }) => {
           type="checkbox"
           checked={isSelected}
           onChange={handleItemSelect}
-          className="absolute top-3 left-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 z-10"
+          className={`absolute top-2 left-2 ${isMobile ? 'w-4 h-4' : 'w-5 h-5'} rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 z-10`}
           onClick={e => e.stopPropagation()}
         />
         
-        <div className="text-center pt-4">
-          <div className="flex justify-center mb-3">
-            <div className={`p-4 rounded-2xl ${fileInfo.bgColor} transition-all duration-200 group-hover:scale-110`}>
-              <IconComponent className={`w-8 h-8 ${fileInfo.color}`} />
+        <div className={`text-center ${isMobile ? 'pt-6' : 'pt-8'}`}>
+          <div className="flex justify-center mb-2 sm:mb-3">
+            <div className={`p-3 sm:p-4 rounded-2xl ${fileInfo.bgColor} transition-all duration-200 group-hover:scale-110`}>
+              <IconComponent className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} ${fileInfo.color}`} />
             </div>
           </div>
           
-          <h3 className={`font-medium text-sm mb-2 line-clamp-2 px-2 ${
+          <h3 className={`font-medium text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-2 px-1 sm:px-2 ${
             item.isDir ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'
           }`}>
             {item.name}
@@ -549,7 +576,7 @@ const SearchResults = ({ darkMode }) => {
                 {item.extension.replace('.', '')}
               </p>
             )}
-            {item.modified && (
+            {item.modified && !isMobile && (
               <p className="text-xs">
                 {new Date(item.modified).toLocaleDateString()}
               </p>
@@ -557,7 +584,7 @@ const SearchResults = ({ darkMode }) => {
           </div>
           
           {!item.isDir && (
-            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className={`absolute ${isMobile ? 'top-2 right-2' : 'top-3 right-3'} opacity-0 group-hover:opacity-100 transition-opacity`}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -570,10 +597,10 @@ const SearchResults = ({ darkMode }) => {
                   fullPath += '/' + item.name;
                   initiateCustomDownload(fullPath, item.name);
                 }}
-                className="p-2 rounded-lg bg-white/90 dark:bg-gray-800/90 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-lg border border-gray-200/50 dark:border-gray-700/50"
+                className={`p-1.5 sm:p-2 rounded-lg bg-white/90 dark:bg-gray-800/90 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-lg border border-gray-200/50 dark:border-gray-700/50`}
                 title="Download"
               >
-                <ArrowDownTrayIcon className="w-4 h-4 text-blue-500" />
+                <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500" />
               </button>
             </div>
           )}
@@ -581,7 +608,7 @@ const SearchResults = ({ darkMode }) => {
           {item.isDir && (
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/20 to-transparent rounded-xl">
               <div className="bg-white/90 dark:bg-gray-800/90 rounded-full p-2 shadow-lg">
-                <ChevronRightIcon className="w-6 h-6 text-blue-600" />
+                <ChevronRightIcon className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-blue-600`} />
               </div>
             </div>
           )}
@@ -590,7 +617,7 @@ const SearchResults = ({ darkMode }) => {
     );
   };
 
-  // Enhanced Folder Browser Component
+  // Enhanced Folder Browser Component with mobile responsiveness
   const renderFolderBrowser = () => {
     if (!meta?.is_dir) return null;
 
@@ -599,26 +626,26 @@ const SearchResults = ({ darkMode }) => {
     const folderStats = getFolderStats();
 
     return (
-      <div className={`space-y-6 p-6 rounded-xl border ${
+      <div className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-xl border ${
         darkMode 
           ? 'bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700/50' 
           : 'bg-gradient-to-br from-white/80 to-gray-50/80 border-gray-200/50'
       } backdrop-blur-sm shadow-lg`}>
         
-        {/* Header with Title and Stats */}
-        <div className="flex items-start justify-between">
+        {/* Mobile-optimized header */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-3 sm:space-y-0">
           <div className="flex items-center space-x-3">
-            <div className={`p-3 rounded-xl ${
+            <div className={`p-2 sm:p-3 rounded-xl ${
               darkMode ? 'bg-blue-600/20' : 'bg-blue-100'
             }`}>
-              <FolderOpenIcon className={`w-7 h-7 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+              <FolderOpenIcon className={`${isMobile ? 'w-5 h-5' : 'w-7 h-7'} ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
             </div>
             <div>
-              <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h3 className={`text-lg sm:text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Folder Contents
               </h3>
               {folderStats && (
-                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   <span>{folderStats.files} file{folderStats.files !== 1 ? 's' : ''}</span>
                   <span>•</span>
                   <span>{folderStats.folders} folder{folderStats.folders !== 1 ? 's' : ''}</span>
@@ -626,8 +653,8 @@ const SearchResults = ({ darkMode }) => {
                   <span>{formatSize(folderStats.totalSize)}</span>
                   {folderStats.hiddenItems > 0 && (
                     <>
-                      <span>•</span>
-                      <span>{folderStats.hiddenItems} hidden</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="hidden sm:inline">{folderStats.hiddenItems} hidden</span>
                     </>
                   )}
                 </div>
@@ -635,9 +662,9 @@ const SearchResults = ({ darkMode }) => {
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between sm:justify-end space-x-2">
             {totalSelected > 0 && (
-              <div className={`px-3 py-2 rounded-lg text-sm font-medium ${
+              <div className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium ${
                 darkMode 
                   ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' 
                   : 'bg-blue-100 text-blue-700 border border-blue-200'
@@ -648,87 +675,88 @@ const SearchResults = ({ darkMode }) => {
             
             <button
               onClick={() => setShowFolderInfo(!showFolderInfo)}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
                 showFolderInfo
                   ? darkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'
                   : darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
               }`}
               title="Folder Info"
             >
-              <InformationCircleIcon className="w-5 h-5" />
+              <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
 
-        {/* Folder Info Panel */}
+        {/* Folder Info Panel - Mobile optimized */}
         {showFolderInfo && folderStats && (
-          <div className={`p-4 rounded-lg border ${
+          <div className={`p-3 sm:p-4 rounded-lg border ${
             darkMode 
               ? 'bg-gray-800/50 border-gray-700/50' 
               : 'bg-gray-50/50 border-gray-200/50'
           }`}>
-            <h4 className={`font-medium mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Folder Statistics
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
               <div>
-                <span className="text-gray-500 dark:text-gray-400">Total Items:</span>
-                <span className="ml-2 font-medium">{folderStats.totalItems}</span>
+                <span className="text-gray-500 dark:text-gray-400">Total:</span>
+                <span className="ml-1 sm:ml-2 font-medium">{folderStats.totalItems}</span>
               </div>
               <div>
                 <span className="text-gray-500 dark:text-gray-400">Files:</span>
-                <span className="ml-2 font-medium">{folderStats.files}</span>
+                <span className="ml-1 sm:ml-2 font-medium">{folderStats.files}</span>
               </div>
               <div>
                 <span className="text-gray-500 dark:text-gray-400">Folders:</span>
-                <span className="ml-2 font-medium">{folderStats.folders}</span>
+                <span className="ml-1 sm:ml-2 font-medium">{folderStats.folders}</span>
               </div>
-              <div>
+              <div className="col-span-2 sm:col-span-1">
                 <span className="text-gray-500 dark:text-gray-400">Size:</span>
-                <span className="ml-2 font-medium">{formatSize(folderStats.totalSize)}</span>
+                <span className="ml-1 sm:ml-2 font-medium">{formatSize(folderStats.totalSize)}</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Enhanced Breadcrumb Navigation */}
-        <div className={`p-4 rounded-lg border ${
+        {/* Mobile-optimized breadcrumb navigation */}
+        <div className={`p-3 sm:p-4 rounded-lg border ${
           darkMode 
             ? 'bg-gray-800/30 border-gray-700/50' 
             : 'bg-white/60 border-gray-200/50'
         }`}>
-          <div className="flex items-center justify-between mb-3">
-            <h4 className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <h4 className={`text-xs sm:text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
               Location
             </h4>
             {currentPath && (
               <button
                 onClick={navigateUp}
-                className={`flex items-center space-x-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                className={`flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm rounded-lg transition-colors ${
                   darkMode 
                     ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' 
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                 }`}
                 title="Go up one level"
               >
-                <ArrowUpIcon className="w-4 h-4" />
-                <span>Up</span>
+                <ArrowUpIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Up</span>
               </button>
             )}
           </div>
           
-          <nav className="flex items-center space-x-2 text-sm overflow-x-auto">
-            <HomeIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <nav className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm overflow-x-auto">
+            <HomeIcon className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
             {breadcrumbs.map((crumb, index) => (
               <React.Fragment key={index}>
-                {index > 0 && <ChevronRightIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />}
+                {index > 0 && <ChevronRightIcon className="w-2 h-2 sm:w-3 sm:h-3 text-gray-400 flex-shrink-0" />}
                 <button
                   onClick={() => navigateToBreadcrumb(crumb.path)}
-                  className={`hover:underline transition-colors whitespace-nowrap ${
+                  className={`hover:underline transition-colors whitespace-nowrap truncate max-w-24 sm:max-w-none ${
                     index === breadcrumbs.length - 1
                       ? darkMode ? 'text-white font-medium' : 'text-gray-900 font-medium'
                       : darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
                   }`}
+                  title={crumb.name}
                 >
                   {crumb.name}
                 </button>
@@ -737,38 +765,40 @@ const SearchResults = ({ darkMode }) => {
           </nav>
         </div>
 
-        {/* Enhanced Toolbar */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          {/* Search and Filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[240px]">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search files and folders..."
-                value={folderSearchTerm}
-                onChange={(e) => setFolderSearchTerm(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${
-                  darkMode 
-                    ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-400' 
-                    : 'bg-white/80 border-gray-300 text-gray-800 placeholder-gray-500'
-                }`}
-              />
-              {folderSearchTerm && (
-                <button
-                  onClick={() => setFolderSearchTerm('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                >
-                  <XMarkIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                </button>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-2">
+        {/* Mobile-responsive toolbar */}
+        <div className="space-y-3 sm:space-y-4">
+          {/* Search bar - full width on mobile */}
+          <div className="relative">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search files and folders..."
+              value={folderSearchTerm}
+              onChange={(e) => setFolderSearchTerm(e.target.value)}
+              className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${
+                darkMode 
+                  ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-400' 
+                  : 'bg-white/80 border-gray-300 text-gray-800 placeholder-gray-500'
+              }`}
+            />
+            {folderSearchTerm && (
+              <button
+                onClick={() => setFolderSearchTerm('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              >
+                <XMarkIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+              </button>
+            )}
+          </div>
+
+          {/* Mobile-optimized controls */}
+          <div className="flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:items-center">
+            {/* Sort and filter controls */}
+            <div className="flex flex-wrap items-center gap-2">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className={`px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                className={`px-3 py-2 rounded-lg border text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
                   darkMode 
                     ? 'bg-gray-700/50 border-gray-600 text-white' 
                     : 'bg-white/80 border-gray-300 text-gray-800'
@@ -782,7 +812,7 @@ const SearchResults = ({ darkMode }) => {
               
               <button
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className={`p-2.5 rounded-lg border transition-colors ${
+                className={`p-2 rounded-lg border transition-colors ${
                   darkMode 
                     ? 'bg-gray-700/50 border-gray-600 hover:bg-gray-600 text-white' 
                     : 'bg-white/80 border-gray-300 hover:bg-gray-100 text-gray-800'
@@ -796,7 +826,7 @@ const SearchResults = ({ darkMode }) => {
               
               <button
                 onClick={() => setShowHiddenFiles(!showHiddenFiles)}
-                className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                className={`p-2 rounded-lg border transition-colors ${
                   showHiddenFiles
                     ? darkMode 
                       ? 'bg-blue-600 border-blue-500 text-white' 
@@ -810,57 +840,57 @@ const SearchResults = ({ darkMode }) => {
                 <EyeSlashIcon className="w-4 h-4" />
               </button>
             </div>
-          </div>
-          
-          {/* View Controls */}
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center bg-gray-200/50 dark:bg-gray-700/50 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
-                  viewMode === 'grid'
-                    ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-                }`}
-                title="Grid View"
-              >
-                <Squares2X2Icon className="w-4 h-4" />
-                <span className="text-sm">Grid</span>
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-                }`}
-                title="List View"
-              >
-                <ListBulletIcon className="w-4 h-4" />
-                <span className="text-sm">List</span>
-              </button>
-            </div>
             
-            {totalSelected > 0 && (
-              <button
-                onClick={() => setSelectedItems(new Set())}
-                className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                  darkMode 
-                    ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30' 
-                    : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
-                }`}
-              >
-                Clear Selection
-              </button>
-            )}
+            {/* View mode toggle */}
+            <div className="flex items-center justify-between sm:justify-end space-x-3">
+              <div className="flex items-center bg-gray-200/50 dark:bg-gray-700/50 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                  }`}
+                  title="Grid View"
+                >
+                  <Squares2X2Icon className="w-4 h-4" />
+                  <span className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>Grid</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                  }`}
+                  title="List View"
+                >
+                  <ListBulletIcon className="w-4 h-4" />
+                  <span className={`text-xs sm:text-sm ${isMobile ? 'hidden' : ''}`}>List</span>
+                </button>
+              </div>
+              
+              {totalSelected > 0 && (
+                <button
+                  onClick={() => setSelectedItems(new Set())}
+                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg transition-colors ${
+                    darkMode 
+                      ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30' 
+                      : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
+                  }`}
+                >
+                  Clear{isMobile ? '' : ' Selection'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Content Grid/List */}
+        {/* Mobile-responsive content grid/list */}
         {filteredEntries.length > 0 ? (
           <div className={
             viewMode === 'grid' 
-              ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4' 
+              ? `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4` 
               : 'space-y-2'
           }>
             {filteredEntries.map((item, index) => (
@@ -868,14 +898,14 @@ const SearchResults = ({ darkMode }) => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
+          <div className="text-center py-8 sm:py-12">
             {folderSearchTerm ? (
               <>
-                <MagnifyingGlassIcon className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                <MagnifyingGlassIcon className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">
                   No results found
                 </h4>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-4">
                   No files or folders match "{folderSearchTerm}"
                 </p>
                 <button
@@ -887,11 +917,11 @@ const SearchResults = ({ darkMode }) => {
               </>
             ) : (
               <>
-                <FolderIcon className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                <FolderIcon className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">
                   Empty folder
                 </h4>
-                <p className="text-gray-500 dark:text-gray-400">
+                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
                   This folder doesn't contain any files or subfolders
                 </p>
               </>
@@ -1442,7 +1472,7 @@ const SearchResults = ({ darkMode }) => {
             const dirRes = await fetch(`${API_BASE}/ls?cid=${query}`);
             const dirData = await dirRes.json();
             if (dirData.entries) {
-              // ENHANCED: Process entries with better size handling
+              // Enhanced entries processing with better size handling
               const enhancedEntries = dirData.entries.map(entry => ({
                 name: entry.name,
                 cid: entry.cid,
@@ -1550,7 +1580,7 @@ const SearchResults = ({ darkMode }) => {
     if (meta.type.startsWith('image/')) {
       const suggestedName = `image_${query.substring(0, 8)}${getFileExtension(meta.type)}`;
       return (
-        <div className={`space-y-6 p-6 rounded-xl border ${
+        <div className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-xl border ${
           darkMode 
             ? 'bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700/50' 
             : 'bg-gradient-to-br from-white/80 to-gray-50/80 border-gray-200/50'
@@ -1559,13 +1589,13 @@ const SearchResults = ({ darkMode }) => {
             <div className={`p-2 rounded-lg ${
               darkMode ? 'bg-blue-600/20' : 'bg-blue-100'
             }`}>
-              <PhotoIcon className={`w-6 h-6 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+              <PhotoIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
             </div>
             <div>
-              <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Image Preview
               </h3>
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {meta.type} • {formatSize(meta.size)}
               </p>
             </div>
@@ -1575,33 +1605,33 @@ const SearchResults = ({ darkMode }) => {
             <img 
               src={contentUrl} 
               alt="Preview" 
-              className="max-w-full max-h-[500px] rounded-lg shadow-xl object-contain mx-auto border border-gray-200/30 dark:border-gray-700/30 transition-all duration-300 group-hover:shadow-2xl"
+              className="max-w-full max-h-[300px] sm:max-h-[500px] rounded-lg shadow-xl object-contain mx-auto border border-gray-200/30 dark:border-gray-700/30 transition-all duration-300 group-hover:shadow-2xl"
             />
             <div className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/5 transition-all duration-300" />
           </div>
           
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
               onClick={() => openFullScreen('image', contentUrl)}
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-purple-500/25' 
                   : 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-purple-500/25'
               }`}
             >
-              <ArrowsPointingOutIcon className="w-4 h-4" />
+              <ArrowsPointingOutIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Full Screen</span>
             </button>
             <button
               onClick={() => initiateCustomDownload(query, suggestedName)}
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-blue-500/25' 
                   : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-blue-500/25'
               }`}
             >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              <span>Download Image</span>
+              <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Download{isMobile ? '' : ' Image'}</span>
             </button>
           </div>
         </div>
@@ -1612,7 +1642,7 @@ const SearchResults = ({ darkMode }) => {
     if (meta.type.startsWith('video/')) {
       const suggestedName = `video_${query.substring(0, 8)}${getFileExtension(meta.type)}`;
       return (
-        <div className={`space-y-6 p-6 rounded-xl border ${
+        <div className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-xl border ${
           darkMode 
             ? 'bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700/50' 
             : 'bg-gradient-to-br from-white/80 to-gray-50/80 border-gray-200/50'
@@ -1621,13 +1651,13 @@ const SearchResults = ({ darkMode }) => {
             <div className={`p-2 rounded-lg ${
               darkMode ? 'bg-purple-600/20' : 'bg-purple-100'
             }`}>
-              <FilmIcon className={`w-6 h-6 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+              <FilmIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
             </div>
             <div>
-              <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Video Preview
               </h3>
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {meta.type} • {formatSize(meta.size)}
               </p>
             </div>
@@ -1637,32 +1667,32 @@ const SearchResults = ({ darkMode }) => {
             <video 
               src={contentUrl} 
               controls 
-              className="w-full max-w-2xl max-h-96 rounded-lg shadow-xl object-contain mx-auto border border-gray-200/30 dark:border-gray-700/30"
+              className="w-full max-w-2xl max-h-64 sm:max-h-96 rounded-lg shadow-xl object-contain mx-auto border border-gray-200/30 dark:border-gray-700/30"
             />
           </div>
           
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
               onClick={() => openFullScreen('video', contentUrl)}
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-purple-500/25' 
                   : 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-purple-500/25'
               }`}
             >
-              <ArrowsPointingOutIcon className="w-4 h-4" />
+              <ArrowsPointingOutIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Full Screen</span>
             </button>
             <button
               onClick={() => initiateCustomDownload(query, suggestedName)}
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-purple-500/25' 
                   : 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-purple-500/25'
               }`}
             >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              <span>Download Video</span>
+              <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Download{isMobile ? '' : ' Video'}</span>
             </button>
           </div>
         </div>
@@ -1673,7 +1703,7 @@ const SearchResults = ({ darkMode }) => {
     if (meta.type.startsWith('audio/')) {
       const suggestedName = `audio_${query.substring(0, 8)}${getFileExtension(meta.type)}`;
       return (
-        <div className={`space-y-6 p-6 rounded-xl border ${
+        <div className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-xl border ${
           darkMode 
             ? 'bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700/50' 
             : 'bg-gradient-to-br from-white/80 to-gray-50/80 border-gray-200/50'
@@ -1682,13 +1712,13 @@ const SearchResults = ({ darkMode }) => {
             <div className={`p-2 rounded-lg ${
               darkMode ? 'bg-green-600/20' : 'bg-green-100'
             }`}>
-              <MusicalNoteIcon className={`w-6 h-6 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
+              <MusicalNoteIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
             </div>
             <div>
-              <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Audio Preview
               </h3>
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {meta.type} • {formatSize(meta.size)}
               </p>
             </div>
@@ -1702,28 +1732,28 @@ const SearchResults = ({ darkMode }) => {
             />
           </div>
           
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
               onClick={() => openFullScreen('audio', contentUrl)}
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-green-500/25' 
                   : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-green-500/25'
               }`}
             >
-              <ArrowsPointingOutIcon className="w-4 h-4" />
+              <ArrowsPointingOutIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Full Screen</span>
             </button>
             <button
               onClick={() => initiateCustomDownload(query, suggestedName)}
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-green-500/25' 
                   : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-green-500/25'
               }`}
             >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              <span>Download Audio</span>
+              <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Download{isMobile ? '' : ' Audio'}</span>
             </button>
           </div>
         </div>
@@ -1734,7 +1764,7 @@ const SearchResults = ({ darkMode }) => {
     if (meta.type === 'application/pdf') {
       const suggestedName = `document_${query.substring(0, 8)}.pdf`;
       return (
-        <div className={`space-y-6 p-6 rounded-xl border ${
+        <div className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-xl border ${
           darkMode 
             ? 'bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700/50' 
             : 'bg-gradient-to-br from-white/80 to-gray-50/80 border-gray-200/50'
@@ -1743,13 +1773,13 @@ const SearchResults = ({ darkMode }) => {
             <div className={`p-2 rounded-lg ${
               darkMode ? 'bg-red-600/20' : 'bg-red-100'
             }`}>
-              <DocumentIcon className={`w-6 h-6 ${darkMode ? 'text-red-400' : 'text-red-600'}`} />
+              <DocumentIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${darkMode ? 'text-red-400' : 'text-red-600'}`} />
             </div>
             <div>
-              <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 PDF Document
               </h3>
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {meta.type} • {formatSize(meta.size)}
               </p>
             </div>
@@ -1759,45 +1789,45 @@ const SearchResults = ({ darkMode }) => {
             <iframe 
               src={`${contentUrl}#toolbar=1&navpanes=1&scrollbar=1`}
               title="PDF Preview"
-              className="w-full h-[600px] rounded-lg border border-gray-200/30 dark:border-gray-700/30 shadow-inner"
+              className="w-full h-[400px] sm:h-[600px] rounded-lg border border-gray-200/30 dark:border-gray-700/30 shadow-inner"
             />
           </div>
           
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
               onClick={() => openFullScreen('pdf', contentUrl)}
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-red-500/25' 
                   : 'bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-red-500/25'
               }`}
             >
-              <ArrowsPointingOutIcon className="w-4 h-4" />
+              <ArrowsPointingOutIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Full Screen</span>
             </button>
             <button
               onClick={() => initiateCustomDownload(query, suggestedName)}
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-red-500/25' 
                   : 'bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-red-500/25'
               }`}
             >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              <span>Download PDF</span>
+              <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Download{isMobile ? '' : ' PDF'}</span>
             </button>
             <a 
               href={contentUrl} 
               target="_blank" 
               rel="noopener noreferrer" 
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg' 
                   : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg'
               }`}
             >
-              <EyeIcon className="w-4 h-4" />
-              <span>Open in New Tab</span>
+              <EyeIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>New Tab</span>
             </a>
           </div>
         </div>
@@ -1812,7 +1842,7 @@ const SearchResults = ({ darkMode }) => {
     ) {
       const suggestedName = `document_${query.substring(0, 8)}${getFileExtension(meta.type)}`;
       return (
-        <div className={`space-y-6 p-6 rounded-xl border ${
+        <div className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-xl border ${
           darkMode 
             ? 'bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700/50' 
             : 'bg-gradient-to-br from-white/80 to-gray-50/80 border-gray-200/50'
@@ -1821,20 +1851,20 @@ const SearchResults = ({ darkMode }) => {
             <div className={`p-2 rounded-lg ${
               darkMode ? 'bg-indigo-600/20' : 'bg-indigo-100'
             }`}>
-              <DocumentTextIcon className={`w-6 h-6 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+              <DocumentTextIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
             </div>
             <div>
-              <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Text Document
               </h3>
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {meta.type} • {formatSize(meta.size)}
               </p>
             </div>
           </div>
           
           <div className="relative">
-            <pre className={`p-4 rounded-lg overflow-auto max-h-[500px] text-sm whitespace-pre-wrap border ${
+            <pre className={`p-3 sm:p-4 rounded-lg overflow-auto max-h-[300px] sm:max-h-[500px] text-xs sm:text-sm whitespace-pre-wrap border ${
               darkMode 
                 ? 'bg-gray-900/50 border-gray-700/30 text-gray-100' 
                 : 'bg-gray-50/50 border-gray-200/30 text-gray-800'
@@ -1843,28 +1873,28 @@ const SearchResults = ({ darkMode }) => {
             </pre>
           </div>
           
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
               onClick={() => openFullScreen('text', '', textContent)}
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg hover:shadow-indigo-500/25' 
                   : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg hover:shadow-indigo-500/25'
               }`}
             >
-              <ArrowsPointingOutIcon className="w-4 h-4" />
+              <ArrowsPointingOutIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Full Screen</span>
             </button>
             <button
               onClick={() => initiateCustomDownload(query, suggestedName)}
-              className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
                 darkMode 
                   ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg hover:shadow-indigo-500/25' 
                   : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg hover:shadow-indigo-500/25'
               }`}
             >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              <span>Download File</span>
+              <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Download{isMobile ? '' : ' File'}</span>
             </button>
           </div>
         </div>
@@ -1874,7 +1904,7 @@ const SearchResults = ({ darkMode }) => {
     // Default file preview
     const suggestedName = `file_${query.substring(0, 8)}`;
     return (
-      <div className={`space-y-6 p-6 rounded-xl border ${
+      <div className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-xl border ${
         darkMode 
           ? 'bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700/50' 
           : 'bg-gradient-to-br from-white/80 to-gray-50/80 border-gray-200/50'
@@ -1883,36 +1913,36 @@ const SearchResults = ({ darkMode }) => {
           <div className={`p-2 rounded-lg ${
             darkMode ? 'bg-gray-600/20' : 'bg-gray-100'
           }`}>
-            <DocumentIcon className={`w-6 h-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+            <DocumentIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
           </div>
           <div>
-            <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               File Content
             </h3>
-            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            <p className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               {meta.type} • {formatSize(meta.size)}
             </p>
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           <button
             onClick={() => initiateCustomDownload(query, suggestedName)}
-            className={`inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
+            className={`inline-flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 ${
               darkMode 
                 ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-blue-500/25' 
                 : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-blue-500/25'
             }`}
           >
-            <ArrowDownTrayIcon className="w-4 h-4" />
-            <span>Download File</span>
+            <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span>Download{isMobile ? '' : ' File'}</span>
           </button>
         </div>
       </div>
     );
   };
 
-  // Fullscreen modal component
+  // Mobile-optimized fullscreen modal component
   const renderFullscreenModal = () => {
     if (!fullscreen.open) return null;
     
@@ -1922,20 +1952,20 @@ const SearchResults = ({ darkMode }) => {
         onClick={closeFullScreen}
         style={{ cursor: 'zoom-out' }}
       >
-        <div className="relative flex items-center justify-center w-full h-full p-4" onClick={e => e.stopPropagation()}>
+        <div className="relative flex items-center justify-center w-full h-full p-2 sm:p-4" onClick={e => e.stopPropagation()}>
           <button
-            className="absolute top-6 right-6 z-50 bg-black/70 hover:bg-black text-white rounded-full p-3 transition-all duration-200"
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 bg-black/70 hover:bg-black text-white rounded-full p-2 sm:p-3 transition-all duration-200"
             onClick={closeFullScreen}
             aria-label="Close fullscreen"
           >
-            <XMarkIcon className="w-6 h-6"/>
+            <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6"/>
           </button>
           
           {fullscreen.type === 'image' && (
             <img 
               src={fullscreen.url} 
               alt="Fullscreen preview" 
-              className="max-h-[95vh] max-w-[95vw] object-contain rounded-lg shadow-2xl"
+              className="max-h-[90vh] max-w-[90vw] sm:max-h-[95vh] sm:max-w-[95vw] object-contain rounded-lg shadow-2xl"
             />
           )}
           
@@ -1944,17 +1974,17 @@ const SearchResults = ({ darkMode }) => {
               src={fullscreen.url} 
               controls 
               autoPlay 
-              className="max-h-[95vh] max-w-[95vw] rounded-lg shadow-2xl"
+              className="max-h-[90vh] max-w-[90vw] sm:max-h-[95vh] sm:max-w-[95vw] rounded-lg shadow-2xl"
             />
           )}
           
           {fullscreen.type === 'audio' && (
-            <div className="bg-gray-900 rounded-xl p-8 shadow-2xl">
+            <div className="bg-gray-900 rounded-xl p-6 sm:p-8 shadow-2xl">
               <audio 
                 src={fullscreen.url} 
                 controls 
                 autoPlay 
-                className="w-[500px] max-w-[90vw]"
+                className="w-[300px] sm:w-[500px] max-w-[90vw]"
               />
             </div>
           )}
@@ -1962,14 +1992,14 @@ const SearchResults = ({ darkMode }) => {
           {fullscreen.type === 'pdf' && (
             <iframe 
               src={fullscreen.url} 
-              className="w-[95vw] h-[95vh] rounded-lg shadow-2xl border border-white/20" 
+              className="w-[90vw] h-[90vh] sm:w-[95vw] sm:h-[95vh] rounded-lg shadow-2xl border border-white/20" 
               title="PDF Fullscreen"
             />
           )}
           
           {fullscreen.type === 'text' && (
-            <div className="w-[95vw] h-[95vh] bg-gray-900 rounded-lg shadow-2xl overflow-auto">
-              <pre className="text-white text-base p-6 whitespace-pre-wrap leading-relaxed">
+            <div className="w-[90vw] h-[90vh] sm:w-[95vw] sm:h-[95vh] bg-gray-900 rounded-lg shadow-2xl overflow-auto">
+              <pre className="text-white text-sm sm:text-base p-4 sm:p-6 whitespace-pre-wrap leading-relaxed">
                 {fullscreen.text}
               </pre>
             </div>
@@ -1982,203 +2012,256 @@ const SearchResults = ({ darkMode }) => {
   return (
     <div className={`flex min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-black'}`}>
       
-      {/* Sidebar with History, Bookmarks, Uploads, Groups, and Analytics icons */}
-      <div className={`w-14 h-screen border-r flex flex-col items-center py-3 space-y-2 ${
-        darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-      }`}>
-        {/* History Icon */}
-        <button
-          onClick={() => handleSectionClick('history')}
-          className={`p-2.5 rounded-lg transition-all duration-200 hover:scale-105 group relative ${
-            activeSection === 'history' && sidebarOpen
-              ? darkMode 
-                ? 'bg-blue-600 text-white shadow-lg' 
-                : 'bg-blue-500 text-white shadow-lg'
-              : darkMode
-              ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white'
-              : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-          }`}
-          title="History"
-        >
-          {activeSection === 'history' && sidebarOpen ? (
-            <ClockSolidIcon className="w-5 h-5" />
-          ) : (
-            <ClockIcon className="w-5 h-5" />
-          )}
-          <div className="absolute left-full ml-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-            History ({history.length})
-          </div>
-        </button>
+      {/* Mobile Header with Menu Button */}
+      {isMobile && (
+        <div className={`fixed top-0 left-0 right-0 z-30 flex items-center justify-between p-4 border-b ${
+          darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        }`}>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className={`p-2 rounded-lg ${
+              darkMode ? 'hover:bg-gray-700 text-white' : 'hover:bg-gray-100 text-gray-700'
+            }`}
+          >
+            <Bars3Icon className="w-5 h-5" />
+          </button>
+          <h1 className="text-lg font-semibold">IPFS Browser</h1>
+          <div className="w-9"></div> {/* Spacer for centering */}
+        </div>
+      )}
 
-        {/* Bookmarks Icon */}
-        <button
-          onClick={() => handleSectionClick('bookmarks')}
-          className={`p-2.5 rounded-lg transition-all duration-200 hover:scale-105 group relative ${
-            activeSection === 'bookmarks' && sidebarOpen
-              ? darkMode 
-                ? 'bg-blue-600 text-white shadow-lg' 
-                : 'bg-blue-500 text-white shadow-lg'
-              : darkMode
-              ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white'
-              : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-          }`}
-          title="Bookmarks"
-        >
-          {activeSection === 'bookmarks' && sidebarOpen ? (
-            <BookmarkSolidIcon className="w-5 h-5" />
-          ) : (
-            <BookmarkIcon className="w-5 h-5" />
-          )}
-          <div className="absolute left-full ml-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-            Bookmarks ({bookmarks.length})
-          </div>
-        </button>
+      {/* Mobile Overlay */}
+      {isMobile && mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
 
-        {/* Uploads Icon */}
-        <button
-          onClick={() => handleSectionClick('uploads')}
-          className={`p-2.5 rounded-lg transition-all duration-200 hover:scale-105 group relative ${
-            activeSection === 'uploads' && sidebarOpen
-              ? darkMode 
-                ? 'bg-blue-600 text-white shadow-lg' 
-                : 'bg-blue-500 text-white shadow-lg'
-              : darkMode
-              ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white'
-              : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-          }`}
-          title="Uploads"
-        >
-          {activeSection === 'uploads' && sidebarOpen ? (
-            <CloudArrowUpSolidIcon className="w-5 h-5" />
-          ) : (
-            <CloudArrowUpIcon className="w-5 h-5" />
-          )}
-          <div className="absolute left-full ml-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-            Uploads ({uploads.length})
+      {/* Responsive Sidebar */}
+      <div className={`${
+        isMobile 
+          ? `fixed left-0 top-0 z-50 h-full transition-transform duration-300 ${
+              mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+            }`
+          : 'relative'
+      } ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
+      ${isMobile ? 'w-80' : 'w-14'} border-r flex flex-col`}>
+        
+        {/* Mobile header in sidebar */}
+        {isMobile && (
+          <div className="flex items-center justify-between p-4 border-b border-gray-700">
+            <h2 className="text-lg font-semibold">Menu</h2>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-lg hover:bg-gray-700"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
           </div>
-        </button>
+        )}
 
-             {/* Groups Icon */}
-        <button
-          onClick={() => handleSectionClick('groups')}
-          className={`p-2.5 rounded-lg transition-all duration-200 hover:scale-105 group relative ${
-            activeSection === 'groups' && sidebarOpen
-              ? darkMode 
-                ? 'bg-blue-600 text-white shadow-lg' 
-                : 'bg-blue-500 text-white shadow-lg'
-              : darkMode
-              ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white'
-              : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-          }`}
-          title="Groups"
-        >
-          {activeSection === 'groups' && sidebarOpen ? (
-            <FolderSolidIcon className="w-5 h-5" />
-          ) : (
-            <FolderIcon className="w-5 h-5" />
-          )}
-          <div className="absolute left-full ml-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-            Groups ({groups.length})
-          </div>
-        </button>
+        {/* Sidebar Icons */}
+        <div className={`${isMobile ? 'p-4 space-y-4' : 'py-3 space-y-2 items-center'} flex flex-col`}>
+          {/* History */}
+          <button
+            onClick={() => {
+              handleSectionClick('history');
+              if (isMobile) setMobileMenuOpen(false);
+            }}
+            className={`${isMobile ? 'w-full flex items-center space-x-3 p-3' : 'p-2.5'} rounded-lg transition-all duration-200 hover:scale-105 group relative ${
+              activeSection === 'history' && sidebarOpen
+                ? darkMode ? 'bg-blue-600 text-white shadow-lg' : 'bg-blue-500 text-white shadow-lg'
+                : darkMode ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white' : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+            }`}
+            title="History"
+          >
+            {activeSection === 'history' && sidebarOpen ? (
+              <ClockSolidIcon className="w-5 h-5" />
+            ) : (
+              <ClockIcon className="w-5 h-5" />
+            )}
+            {isMobile && <span>History ({history.length})</span>}
+            {!isMobile && (
+              <div className="absolute left-full ml-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                History ({history.length})
+              </div>
+            )}
+          </button>
 
-        {/* Analytics Icon */}
-        <button
-          onClick={() => handleSectionClick('analytics')}
-          className={`p-2.5 rounded-lg transition-all duration-200 hover:scale-105 group relative ${
-            activeSection === 'analytics' && sidebarOpen
-              ? darkMode 
-                ? 'bg-blue-600 text-white shadow-lg' 
-                : 'bg-blue-500 text-white shadow-lg'
-              : darkMode
-              ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white'
-              : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
-          }`}
-          title="Analytics"
-        >
-          {activeSection === 'analytics' && sidebarOpen ? (
-            <ChartBarSolidIcon className="w-5 h-5" />
-          ) : (
-            <ChartBarIcon className="w-5 h-5" />
-          )}
-          <div className="absolute left-full ml-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-            Analytics
-          </div>
-        </button>
+          {/* Bookmarks */}
+          <button
+            onClick={() => {
+              handleSectionClick('bookmarks');
+              if (isMobile) setMobileMenuOpen(false);
+            }}
+            className={`${isMobile ? 'w-full flex items-center space-x-3 p-3' : 'p-2.5'} rounded-lg transition-all duration-200 hover:scale-105 group relative ${
+              activeSection === 'bookmarks' && sidebarOpen
+                ? darkMode ? 'bg-blue-600 text-white shadow-lg' : 'bg-blue-500 text-white shadow-lg'
+                : darkMode ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white' : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+            }`}
+            title="Bookmarks"
+          >
+            {activeSection === 'bookmarks' && sidebarOpen ? (
+              <BookmarkSolidIcon className="w-5 h-5" />
+            ) : (
+              <BookmarkIcon className="w-5 h-5" />
+            )}
+            {isMobile && <span>Bookmarks ({bookmarks.length})</span>}
+            {!isMobile && (
+              <div className="absolute left-full ml-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                Bookmarks ({bookmarks.length})
+              </div>
+            )}
+          </button>
+
+          {/* Uploads */}
+          <button
+            onClick={() => {
+              handleSectionClick('uploads');
+              if (isMobile) setMobileMenuOpen(false);
+            }}
+            className={`${isMobile ? 'w-full flex items-center space-x-3 p-3' : 'p-2.5'} rounded-lg transition-all duration-200 hover:scale-105 group relative ${
+              activeSection === 'uploads' && sidebarOpen
+                ? darkMode ? 'bg-blue-600 text-white shadow-lg' : 'bg-blue-500 text-white shadow-lg'
+                : darkMode ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white' : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+            }`}
+            title="Uploads"
+          >
+            {activeSection === 'uploads' && sidebarOpen ? (
+              <CloudArrowUpSolidIcon className="w-5 h-5" />
+            ) : (
+              <CloudArrowUpIcon className="w-5 h-5" />
+            )}
+            {isMobile && <span>Uploads ({uploads.length})</span>}
+            {!isMobile && (
+              <div className="absolute left-full ml-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                Uploads ({uploads.length})
+              </div>
+            )}
+          </button>
+
+          {/* Groups */}
+          <button
+            onClick={() => {
+              handleSectionClick('groups');
+              if (isMobile) setMobileMenuOpen(false);
+            }}
+            className={`${isMobile ? 'w-full flex items-center space-x-3 p-3' : 'p-2.5'} rounded-lg transition-all duration-200 hover:scale-105 group relative ${
+              activeSection === 'groups' && sidebarOpen
+                ? darkMode ? 'bg-blue-600 text-white shadow-lg' : 'bg-blue-500 text-white shadow-lg'
+                : darkMode ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white' : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+            }`}
+            title="Groups"
+          >
+            {activeSection === 'groups' && sidebarOpen ? (
+              <FolderSolidIcon className="w-5 h-5" />
+            ) : (
+              <FolderIcon className="w-5 h-5" />
+            )}
+            {isMobile && <span>Groups ({groups.length})</span>}
+            {!isMobile && (
+              <div className="absolute left-full ml-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                Groups ({groups.length})
+              </div>
+            )}
+          </button>
+
+          {/* Analytics */}
+          <button
+            onClick={() => {
+              handleSectionClick('analytics');
+              if (isMobile) setMobileMenuOpen(false);
+            }}
+            className={`${isMobile ? 'w-full flex items-center space-x-3 p-3' : 'p-2.5'} rounded-lg transition-all duration-200 hover:scale-105 group relative ${
+              activeSection === 'analytics' && sidebarOpen
+                ? darkMode ? 'bg-blue-600 text-white shadow-lg' : 'bg-blue-500 text-white shadow-lg'
+                : darkMode ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white' : 'bg-gray-100/50 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
+            }`}
+            title="Analytics"
+          >
+            {activeSection === 'analytics' && sidebarOpen ? (
+              <ChartBarSolidIcon className="w-5 h-5" />
+            ) : (
+              <ChartBarIcon className="w-5 h-5" />
+            )}
+            {isMobile && <span>Analytics</span>}
+            {!isMobile && (
+              <div className="absolute left-full ml-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                Analytics
+              </div>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* Content Sidebar */}
-      <div className={`h-screen border-r overflow-y-auto transition-all duration-300 ease-in-out ${
-        sidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full'
-      } ${darkMode ? 'bg-gray-850/95 border-gray-700/50 backdrop-blur-sm' : 'bg-white/95 border-gray-200/50 backdrop-blur-sm'}`}>
-        
-        <div className={`p-4 ${sidebarOpen ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}>
-          {/* History Section */}
-          {activeSection === 'history' && (
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2 mb-4">
-                <ClockSolidIcon className="w-4 h-4 text-blue-500" />
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">History</h2>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {history.length} items
-              </p>
+      {/* Main Content Area */}
+      <div className={`flex-1 ${isMobile ? 'pt-16' : ''}`}>
+        {/* Content Sidebar - Hidden on mobile, showing on desktop when sidebar is open */}
+        <div className={`${isMobile ? 'hidden' : ''} h-screen border-r overflow-y-auto transition-all duration-300 ease-in-out ${
+          sidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full'
+        } ${darkMode ? 'bg-gray-850/95 border-gray-700/50 backdrop-blur-sm' : 'bg-white/95 border-gray-200/50 backdrop-blur-sm'}`}>
+          
+          <div className={`p-4 ${sidebarOpen ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}>
+            {/* History Section */}
+            {activeSection === 'history' && (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <ClockSolidIcon className="w-4 h-4 text-blue-500" />
+                  <h2 className="text-lg font-semibold text-gray-800 dark:text-white">History</h2>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {history.length} items
+                </p>
 
-              <div className="space-y-1.5">
-                {history.length === 0 && (
-                  <div className="text-center py-8">
-                    <ClockIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">No history</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      Your searches appear here
-                    </p>
-                  </div>
-                )}
-                {history.map((item, index) => (
-                  <div
-                    key={item.cid || index}
-                    className={`group p-2.5 rounded-lg border transition-all duration-200 cursor-pointer hover:shadow-sm ${
-                      darkMode 
-                        ? 'bg-gray-700/20 border-gray-600/30 hover:bg-gray-700/40 hover:border-gray-600/50' 
-                        : 'bg-gray-50/30 border-gray-200/30 hover:bg-gray-100/60 hover:border-gray-300/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div 
-                        className="flex-1 min-w-0 pr-1.5"
-                        onClick={() => navigate(`/search?q=${encodeURIComponent(item.cid)}`)}
-                      >
-                        <p className="text-xs font-mono text-blue-600 dark:text-blue-400 truncate">
-                          {item.cid}
-                        </p>
-                        {item.timestamp && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            {new Date(item.timestamp).toLocaleDateString()}
+                <div className="space-y-1.5">
+                  {history.length === 0 && (
+                    <div className="text-center py-8">
+                      <ClockIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">No history</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        Your searches appear here
+                      </p>
+                    </div>
+                  )}
+                  
+                  {history.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`group flex items-center justify-between p-2.5 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
+                        darkMode
+                          ? 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-700/60 hover:border-gray-600/70'
+                          : 'bg-white/80 border-gray-200/50 hover:bg-gray-50 hover:border-gray-300'
+                      }`}
+                      onClick={() => navigate(`/search?q=${encodeURIComponent(item.cid)}`)}
+                    >
+                      <div className="flex items-center space-x-2 min-w-0 flex-1">
+                        {getFileTypeIcon(item.type, 'w-3.5 h-3.5')}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                            {item.cid?.slice(0, 8)}...{item.cid?.slice(-6)}
                           </p>
-                        )}
+                          <div className="flex items-center space-x-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{item.type || 'unknown'}</span>
+                            <span>•</span>
+                            <span>{formatSize(item.size || 0)}</span>
+                            <span>•</span>
+                            <span>{new Date(item.timestamp).toLocaleDateString()}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowAddToGroupModal(true);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-900/40 transition-all duration-200"
-                          title="Add to Group"
-                        >
-                          <FolderIcon className="w-3.5 h-3.5 text-green-500" />
-                        </button>
-                        {/* Only show analytics button for uploaded CIDs */}
+                      
+                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {isCidUploaded(item.cid) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               openCidAnalytics(item.cid);
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all duration-200"
-                            title="View Analytics (Uploaded Content)"
+                            className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                            title="Analytics"
                           >
-                            <ChartBarIcon className="w-3.5 h-3.5 text-blue-500" />
+                            <ChartBarIcon className="w-3 h-3 text-blue-500" />
                           </button>
                         )}
                         <button
@@ -2186,92 +2269,77 @@ const SearchResults = ({ darkMode }) => {
                             e.stopPropagation();
                             deleteHistory(item.cid);
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-all duration-200"
+                          className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                          title="Delete"
                         >
-                          <TrashIcon className="w-3.5 h-3.5 text-red-500" />
+                          <TrashIcon className="w-3 h-3 text-red-500" />
                         </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Bookmarks Section */}
-          {activeSection === 'bookmarks' && (
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2 mb-4">
-                <BookmarkSolidIcon className="w-4 h-4 text-blue-500" />
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Bookmarks</h2>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {bookmarks.length} saved
-              </p>
+            {/* Bookmarks Section */}
+            {activeSection === 'bookmarks' && (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <BookmarkSolidIcon className="w-4 h-4 text-blue-500" />
+                  <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Bookmarks</h2>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {bookmarks.length} items
+                </p>
 
-              <div className="space-y-1.5">
-                {bookmarks.length === 0 && (
-                  <div className="text-center py-8">
-                    <BookmarkIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">No bookmarks</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      Save content here
-                    </p>
-                  </div>
-                )}
-                {bookmarks.map((item, index) => (
-                  <div
-                    key={item.cid || index}
-                    className={`group p-2.5 rounded-lg border transition-all duration-200 cursor-pointer hover:shadow-sm ${
-                      darkMode 
-                        ? 'bg-gray-700/20 border-gray-600/30 hover:bg-gray-700/40 hover:border-gray-600/50' 
-                        : 'bg-gray-50/30 border-gray-200/30 hover:bg-gray-100/60 hover:border-gray-300/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div 
-                        className="flex-1 min-w-0 pr-1.5"
-                        onClick={() => navigate(`/search?q=${encodeURIComponent(item.cid)}`)}
-                      >
-                        <div className="flex items-center space-x-1.5 mb-1">
-                          <BookmarkSolidIcon className="w-3 h-3 text-yellow-500 flex-shrink-0" />
-                          <p className="text-xs font-medium truncate">{item.title}</p>
-                        </div>
-                        <p className="text-xs font-mono text-blue-600 dark:text-blue-400 truncate">
-                          {item.cid}
-                        </p>
-                        <div className="flex items-center space-x-1.5 mt-1">
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {formatSize(item.size || 0)}
+                <div className="space-y-1.5">
+                  {bookmarks.length === 0 && (
+                    <div className="text-center py-8">
+                      <BookmarkIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">No bookmarks</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        Bookmark content to access later
+                      </p>
+                    </div>
+                  )}
+                  
+                  {bookmarks.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`group flex items-center justify-between p-2.5 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
+                        darkMode
+                          ? 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-700/60 hover:border-gray-600/70'
+                          : 'bg-white/80 border-gray-200/50 hover:bg-gray-50 hover:border-gray-300'
+                      }`}
+                      onClick={() => navigate(`/search?q=${encodeURIComponent(item.cid)}`)}
+                    >
+                      <div className="flex items-center space-x-2 min-w-0 flex-1">
+                        {getFileTypeIcon(item.type, 'w-3.5 h-3.5')}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                            {item.title || `${item.cid?.slice(0, 8)}...${item.cid?.slice(-6)}`}
                           </p>
-                          <span className="text-xs text-gray-400">•</span>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {item.type?.split('/')[0] || 'file'}
-                          </p>
+                          <div className="flex items-center space-x-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{item.type || 'unknown'}</span>
+                            <span>•</span>
+                            <span>{formatSize(item.size || 0)}</span>
+                            <span>•</span>
+                            <span>{new Date(item.timestamp).toLocaleDateString()}</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowAddToGroupModal(true);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-900/40 transition-all duration-200"
-                          title="Add to Group"
-                        >
-                          <FolderIcon className="w-3.5 h-3.5 text-green-500" />
-                        </button>
-                        {/* Only show analytics button for uploaded CIDs */}
+                      
+                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {isCidUploaded(item.cid) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               openCidAnalytics(item.cid);
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all duration-200"
-                            title="View Analytics (Uploaded Content)"
+                            className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                            title="Analytics"
                           >
-                            <ChartBarIcon className="w-3.5 h-3.5 text-blue-500" />
+                            <ChartBarIcon className="w-3 h-3 text-blue-500" />
                           </button>
                         )}
                         <button
@@ -2279,1251 +2347,1090 @@ const SearchResults = ({ darkMode }) => {
                             e.stopPropagation();
                             deleteBookmark(item.cid);
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-all duration-200"
+                          className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                          title="Remove bookmark"
                         >
-                          <TrashIcon className="w-3.5 h-3.5 text-red-500" />
+                          <BookmarkSlashIcon className="w-3 h-3 text-red-500" />
                         </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Uploads Section */}
-          {activeSection === 'uploads' && (
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2 mb-4">
-                <CloudArrowUpSolidIcon className="w-4 h-4 text-blue-500" />
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Uploads</h2>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {uploads.length} files
-              </p>
+            {/* Uploads Section */}
+            {activeSection === 'uploads' && (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <CloudArrowUpSolidIcon className="w-4 h-4 text-blue-500" />
+                  <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Uploads</h2>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {uploads.length} items
+                </p>
 
-              <div className="space-y-1.5">
-                {uploads.length === 0 && (
-                  <div className="text-center py-8">
-                    <CloudArrowUpIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">No uploads</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      Your uploaded files appear here
-                    </p>
-                  </div>
-                )}
-                {uploads.map((item, index) => (
-                  <div
-                    key={item.cid || index}
-                    className={`group p-2.5 rounded-lg border transition-all duration-200 cursor-pointer hover:shadow-sm ${
-                      darkMode 
-                        ? 'bg-gray-700/20 border-gray-600/30 hover:bg-gray-700/40 hover:border-gray-600/50' 
-                        : 'bg-gray-50/30 border-gray-200/30 hover:bg-gray-100/60 hover:border-gray-300/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div 
-                        className="flex-1 min-w-0 pr-1.5"
-                        onClick={() => {
-                          if (item.visibility === "private") {
-                            window.open(`${API_BASE}/preview-private/${item.cid}`, '_blank');
-                          } else {
-                            navigate(`/search?q=${encodeURIComponent(item.cid)}`);
-                          }
-                        }}
-                      >
-                        <div className="flex items-center space-x-1.5 mb-1">
-                          <CloudArrowUpSolidIcon className="w-3 h-3 text-green-500 flex-shrink-0" />
-                          <p className="text-xs font-medium truncate">{item.fileName || 'Untitled'}</p>
-                          {item.visibility === "private" && (
-                            <EyeSlashIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          )}
+                <div className="space-y-1.5">
+                  {uploads.length === 0 && (
+                    <div className="text-center py-8">
+                      <CloudArrowUpIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">No uploads</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        Your uploaded content appears here
+                      </p>
+                    </div>
+                  )}
+                  
+                  {uploads.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`group flex items-center justify-between p-2.5 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
+                        darkMode
+                          ? 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-700/60 hover:border-gray-600/70'
+                          : 'bg-white/80 border-gray-200/50 hover:bg-gray-50 hover:border-gray-300'
+                      }`}
+                      onClick={() => navigate(`/search?q=${encodeURIComponent(item.cid)}`)}
+                    >
+                      <div className="flex items-center space-x-2 min-w-0 flex-1">
+                        {getFileTypeIcon(item.type, 'w-3.5 h-3.5')}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                            {item.filename || `${item.cid?.slice(0, 8)}...${item.cid?.slice(-6)}`}
+                          </p>
+                          <div className="flex items-center space-x-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{item.type || 'unknown'}</span>
+                            <span>•</span>
+                            <span>{formatSize(item.size || 0)}</span>
+                            <span>•</span>
+                            <span>{new Date(item.timestamp).toLocaleDateString()}</span>
+                          </div>
                         </div>
-                        <p className="text-xs font-mono text-blue-600 dark:text-blue-400 truncate">
-                          {item.cid}
-                        </p>
-                        <div className="flex items-center space-x-1.5 mt-1">
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {formatSize(item.fileSize || 0)}
-                          </p>
-                          <span className="text-xs text-gray-400">•</span>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {item.fileType?.split('/')[0] || 'file'}
-                          </p>
-                          <span className="text-xs text-gray-400">•</span>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {item.visibility}
-                          </p>
-                        </div>
-                        {item.timestamp && (
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            {new Date(item.timestamp).toLocaleDateString()}
-                          </p>
-                        )}
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowAddToGroupModal(true);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-900/40 transition-all duration-200"
-                          title="Add to Group"
-                        >
-                          <FolderIcon className="w-3.5 h-3.5 text-green-500" />
-                        </button>
-                        {/* Analytics button - always visible for uploads since they're all uploaded by user */}
+                      
+                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             openCidAnalytics(item.cid);
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all duration-200"
-                          title="View Analytics"
+                          className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                          title="Analytics"
                         >
-                          <ChartBarIcon className="w-3.5 h-3.5 text-blue-500" />
+                          <ChartBarIcon className="w-3 h-3 text-blue-500" />
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteUpload(item.cid);
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-all duration-200"
+                          className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                          title="Delete"
                         >
-                          <TrashIcon className="w-3.5 h-3.5 text-red-500" />
+                          <TrashIcon className="w-3 h-3 text-red-500" />
                         </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Groups Section */}
-          {activeSection === 'groups' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <FolderSolidIcon className="w-4 h-4 text-blue-500" />
-                  <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Groups</h2>
-                </div>
-                <button
-                  onClick={() => setShowCreateGroupModal(true)}
-                  className="p-1.5 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all duration-200"
-                  title="Create New Group"
-                >
-                  <PlusIcon className="w-4 h-4 text-blue-500" />
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {groups.length} groups
-              </p>
-
-              <div className="space-y-1.5">
-                {groupsLoading ? (
-                  <div className="text-center py-8">
-                    <ArrowPathIcon className="w-6 h-6 animate-spin mx-auto mb-2" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Loading groups...</p>
-                  </div>
-                ) : groups.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FolderIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">No groups</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      Create groups to organize your CIDs
-                    </p>
-                    <button
-                      onClick={() => setShowCreateGroupModal(true)}
-                      className="mt-3 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Create First Group
-                    </button>
-                  </div>
-                ) : (
-                  groups.map((group) => (
-                    <div
-                      key={group.id}
-                      className={`group p-2.5 rounded-lg border transition-all duration-200 cursor-pointer hover:shadow-sm ${
-                        darkMode 
-                          ? 'bg-gray-700/20 border-gray-600/30 hover:bg-gray-700/40 hover:border-gray-600/50' 
-                          : 'bg-gray-50/30 border-gray-200/30 hover:bg-gray-100/60 hover:border-gray-300/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div 
-                          className="flex-1 min-w-0 pr-1.5"
-                          onClick={() => fetchGroupDetails(group.id)}
-                        >
-                          <div className="flex items-center space-x-1.5 mb-1">
-                            <FolderSolidIcon className="w-3 h-3 text-blue-500 flex-shrink-0" />
-                            <p className="text-xs font-medium truncate">{group.name}</p>
-                          </div>
-                          <div className="flex items-center space-x-1.5">
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {group.cid_count} CID{group.cid_count !== 1 ? 's' : ''}
-                            </p>
-                            <span className="text-xs text-gray-400">•</span>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {new Date(group.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openAddCidModal(group.id);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-900/40 transition-all duration-200"
-                            title="Add CID to Group"
-                          >
-                            <PlusIcon className="w-3.5 h-3.5 text-green-500" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setGroupToRename(group);
-                              setRenameGroupName(group.name);
-                              setShowRenameGroupModal(true);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all duration-200"
-                            title="Rename Group"
-                          >
-                            <PencilIcon className="w-3.5 h-3.5 text-blue-500" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteGroup(group.id, group.name);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-all duration-200"
-                            title="Delete Group"
-                          >
-                            <TrashIcon className="w-3.5 h-3.5 text-red-500" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Analytics Section */}
-          {activeSection === 'analytics' && (
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2 mb-4">
-                <ChartBarSolidIcon className="w-4 h-4 text-blue-500" />
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Analytics</h2>
-              </div>
-
-              {/* Analytics Controls */}
-              <div className="flex items-center justify-between">
-                <select
-                  value={selectedAnalyticsPeriod}
-                  onChange={(e) => {
-                    const period = parseInt(e.target.value);
-                    setSelectedAnalyticsPeriod(period);
-                    fetchAnalyticsDashboard(period);
-                  }}
-                  className={`text-xs px-2 py-1 rounded-md border ${
-                    darkMode 
-                      ? 'bg-gray-700 border-gray-600 text-white' 
-                      : 'bg-white border-gray-300 text-gray-800'
-                  }`}
-                >
-                  <option value={7}>Last 7 days</option>
-                  <option value={30}>Last 30 days</option>
-                  <option value={90}>Last 90 days</option>
-                </select>
-                <div className="flex space-x-1">
-                  <button
-                    onClick={() => exportAnalytics('views', selectedAnalyticsPeriod)}
-                    className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                    title="Export Views (Uploaded Content Only)"
-                  >
-                    <ArrowDownTrayIcon className="w-3.5 h-3.5 text-gray-500" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Notice about uploaded content only */}
-              <div className={`p-2 rounded-lg text-xs ${
-                darkMode ? 'bg-blue-900/20 text-blue-300 border border-blue-800/30' : 'bg-blue-50 text-blue-700 border border-blue-200'
-              }`}>
-                📊 Analytics shown for uploaded content only
-              </div>
-
-              {!analytics && (
-                <div className="text-center py-8">
-                  <ChartBarIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Loading analytics...</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 px-6 py-6">
-        <div className="mb-6">
-          <Search darkMode={darkMode} onSearch={handleSearch} initialQuery={query} />
-        </div>
-
-        {loading && (
-          <div className="flex items-center space-x-2 text-gray-500">
-            <ArrowPathIcon className="w-4 h-4 animate-spin" />
-            <span>🔄 Loading...</span>
-          </div>
-        )}
-        
-        {isRetrying && (
-          <div className="flex items-center space-x-2 text-blue-500">
-            <ArrowPathIcon className="w-4 h-4 animate-spin" />
-            <span>🔄 Retrying...</span>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <ExclamationTriangleIcon className="w-5 h-5 text-red-500" />
-              <p className="text-red-600 dark:text-red-400">{error}</p>
-            </div>
-            {query && (
-              <button
-                onClick={handleRetry}
-                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-              >
-                Retry
-              </button>
-            )}
-          </div>
-        )}
-
-        {meta && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold mb-2">
-                  Content Details
-                </h2>
-                <div className={`p-3 rounded-lg border ${
-                  darkMode 
-                    ? 'bg-gray-800/50 border-gray-700/50' 
-                    : 'bg-gray-50/50 border-gray-200/50'
-                } backdrop-blur-sm`}>
-                  <p className="text-sm font-mono text-blue-600 dark:text-blue-400 break-all mb-2">
-                    {query}
-                  </p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                    <span>Type: {meta.type}</span>
-                    <span>•</span>
-                    <span>Size: {formatSize(meta.size)}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                {/* Add to Group Button */}
-                <button
-                  onClick={() => setShowAddToGroupModal(true)}
-                  className={`inline-flex items-center space-x-1 px-2.5 py-1.5 text-xs rounded-md font-medium transition-colors ${
-                    darkMode 
-                      ? 'bg-green-600 hover:bg-green-700 text-white' 
-                      : 'bg-green-600 hover:bg-green-700 text-white'
-                  }`}
-                  title="Add to Group"
-                >
-                  <FolderIcon className="w-3.5 h-3.5" />
-                  <span>Add to Group</span>
-                </button>
-
-                {/* Analytics Button for Current CID - Only show for uploaded CIDs */}
-                {isCidUploaded(query) && (
-                  <button
-                    onClick={() => openCidAnalytics(query)}
-                    className={`inline-flex items-center space-x-1 px-2.5 py-1.5 text-xs rounded-md font-medium transition-colors ${
-                      darkMode 
-                        ? 'bg-purple-600 hover:bg-purple-700 text-white' 
-                        : 'bg-purple-600 hover:bg-purple-700 text-white'
-                    }`}
-                    title="View Analytics (Uploaded Content)"
-                  >
-                    <ChartBarIcon className="w-3.5 h-3.5" />
-                    <span>Analytics</span>
-                  </button>
-                )}
-
-                {/* Bookmark Button */}
-                <button
-                  onClick={toggleBookmark}
-                  className={`inline-flex items-center space-x-1 px-2.5 py-1.5 text-xs rounded-md font-medium transition-colors ${
-                    isBookmarked
-                      ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                      : darkMode 
-                        ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                        : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                  }`}
-                  title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-                >
-                  {isBookmarked ? (
-                    <BookmarkSolidIcon className="w-3.5 h-3.5" />
-                  ) : (
-                    <BookmarkIcon className="w-3.5 h-3.5" />
-                  )}
-                  <span>{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
-                </button>
-
-                {/* Share Button with Menu */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowShareOptions(!showShareOptions)}
-                    className={`inline-flex items-center space-x-1 px-2.5 py-1.5 text-xs rounded-md font-medium transition-colors ${
-                      darkMode 
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
-                  >
-                    <ShareIcon className="w-3.5 h-3.5" />
-                    <span>Share</span>
-                  </button>
-                  
-                  {/* Share Menu */}
-                  {showShareOptions && (
-                    <div className={`absolute right-0 mt-1 w-40 rounded-lg shadow-xl border z-50 ${
-                      darkMode 
-                        ? 'bg-gray-800 border-gray-700' 
-                        : 'bg-white border-gray-200'
-                    } animate-fade-in`}>
-                      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-                        <span className="text-xs font-medium">Share</span>
-                        <button
-                          onClick={() => setShowShareOptions(false)}
-                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          <XMarkIcon className="w-3 h-3 text-gray-500" />
-                        </button>
-                      </div>
-                      
-                      <div className="p-1">
-                        <button
-                          onClick={handleCopyLink}
-                          className={`flex items-center space-x-2 w-full px-2 py-2 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                            copySuccess ? 'bg-green-50 dark:bg-green-900/20' : ''
-                          }`}
-                        >
-                          <div className={`w-4 h-4 rounded flex items-center justify-center ${
-                            copySuccess ? 'bg-green-500' : 'bg-gray-100 dark:bg-gray-700'
-                          }`}>
-                            {copySuccess ? (
-                              <CheckIcon className="w-3 h-3 text-white" />
-                            ) : (
-                              <ClipboardDocumentIcon className="w-3 h-3 text-gray-600 dark:text-gray-300" />
-                            )}
-                          </div>
-                          <span className={copySuccess ? 'text-green-600 dark:text-green-400' : ''}>
-                            {copySuccess ? 'Copied!' : 'Copy Link'}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Enhanced Folder Browser */}
-            {renderFolderBrowser()}
-            
-            {/* Regular preview for non-directory content */}
-            {!meta.is_dir && <div>{renderPreview()}</div>}
-          </div>
-        )}
-      </div>
-
-     {/* All Modals */}
-      {/* Group Details Modal */}
-      {showGroupModal && selectedGroup && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className={`relative rounded-xl shadow-2xl p-4 w-full max-w-2xl max-h-[80vh] overflow-y-auto transform transition-all duration-300 scale-100 border ${
-            darkMode 
-              ? 'bg-gray-800/95 border-gray-700/50 backdrop-blur-xl' 
-              : 'bg-white/95 border-gray-200/50 backdrop-blur-xl'
-          }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <FolderSolidIcon className="w-6 h-6 text-blue-500" />
-                <div>
-                  <h2 className={`text-md font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                    {selectedGroup.name}
-                  </h2>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {selectedGroup.cid_count} CID{selectedGroup.cid_count !== 1 ? 's' : ''} • Created {new Date(selectedGroup.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => openAddCidModal(selectedGroup.id)}
-                  className={`px-2 py-1 text-xs rounded-md font-medium transition-colors ${
-                    darkMode 
-                      ? 'bg-green-600 hover:bg-green-700 text-white' 
-                      : 'bg-green-600 hover:bg-green-700 text-white'
-                  }`}
-                  title="Add CID to Group"
-                >
-                  <PlusIcon className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => {
-                    setShowGroupModal(false);
-                    setSelectedGroup(null);
-                  }}
-                  className={`p-1 rounded-md transition-all duration-200 ${
-                    darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  <XMarkIcon className="w-4 h-4 text-gray-500" />
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {selectedGroup.cids && selectedGroup.cids.length === 0 ? (
-                <div className="text-center py-8">
-                  <FolderIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">No CIDs in this group</p>
-                  <button
-                    onClick={() => openAddCidModal(selectedGroup.id)}
-                    className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    Add First CID
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-2">
-                  {selectedGroup.cids && selectedGroup.cids.map((cidItem, index) => (
-                    <div
-                      key={index}
-                      className={`group p-3 rounded-md border transition-all duration-200 cursor-pointer hover:shadow-sm ${
-                        darkMode 
-                          ? 'bg-gray-700/20 border-gray-600/30 hover:bg-gray-700/40 hover:border-gray-600/50' 
-                          : 'bg-gray-50/30 border-gray-200/30 hover:bg-gray-100/60 hover:border-gray-300/50'
-                      }`}
-                      onClick={() => navigate(`/search?q=${encodeURIComponent(cidItem.cid)}`)}
-                    >
-                      <div className="flex items-start space-x-2">
-                        <div className={`p-1.5 rounded-md flex-shrink-0 ${
-                          darkMode ? 'bg-gray-600/50' : 'bg-gray-200/50'
-                        }`}>
-                          {getFileTypeIcon(cidItem.fileType, 'w-4 h-4 text-gray-600 dark:text-gray-300')}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <p className="text-sm font-medium truncate text-gray-800 dark:text-white">
-                              {cidItem.fileName || `File_${cidItem.cid.substring(0, 8)}`}
-                            </p>
-                            {cidItem.fileSize > 0 && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200/50 dark:bg-gray-700/50 px-1.5 py-0.5 rounded-full">
-                                {formatSize(cidItem.fileSize)}
-                              </span>
-                            )}
-                          </div>
-                          
-                          <p className="text-xs font-mono text-blue-600 dark:text-blue-400 truncate mb-1 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20">
-                            {cidItem.cid}
-                          </p>
-                          
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-1">
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Added {new Date(cidItem.added_at).toLocaleDateString()}
-                              </p>
-                              {cidItem.fileType && (
-                                <>
-                                  <span className="text-xs text-gray-400">•</span>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                                    {cidItem.fileType.split('/')[0]}
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                            
-                            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {isCidUploaded(cidItem.cid) && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openCidAnalytics(cidItem.cid);
-                                  }}
-                                  className="p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all duration-200"
-                                  title="View Analytics"
-                                >
-                                  <ChartBarIcon className="w-3.5 h-3.5 text-blue-500" />
-                                </button>
-                              )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeCidFromGroup(selectedGroup.id, cidItem.cid);
-                                }}
-                                className="p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-all duration-200"
-                                title="Remove from Group"
-                              >
-                                <TrashIcon className="w-3.5 h-3.5 text-red-500" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+              </div>
+            )}
 
-      {/* Add to Group Modal */}
-      {showAddToGroupModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className={`relative rounded-xl shadow-2xl p-4 w-full max-w-sm ${
-            darkMode 
-              ? 'bg-gray-800 border border-gray-700' 
-              : 'bg-white border border-gray-200'
-          }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <FolderIcon className="w-5 h-5 text-blue-500" />
-                <div>
-                  <h2 className={`text-md font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                    Add to Group
-                  </h2>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} font-mono truncate max-w-[150px]`}>
-                    {query}
-                  </p>
+            {/* Groups Section */}
+            {activeSection === 'groups' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <FolderSolidIcon className="w-4 h-4 text-blue-500" />
+                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Groups</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowCreateGroupModal(true)}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      darkMode 
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                    title="Create Group"
+                  >
+                    <PlusIcon className="w-3 h-3" />
+                  </button>
+                </div>
+                
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {groupsLoading ? 'Loading...' : `${groups.length} groups`}
+                </p>
+
+                <div className="space-y-1.5">
+                  {!groupsLoading && groups.length === 0 && (
+                    <div className="text-center py-8">
+                      <FolderIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">No groups</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        Create groups to organize your CIDs
+                      </p>
+                    </div>
+                  )}
+                  
+                  {groups.map((group, index) => (
+                    <div
+                      key={group.id}
+                      className={`group flex items-center justify-between p-2.5 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
+                        darkMode
+                          ? 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-700/60 hover:border-gray-600/70'
+                          : 'bg-white/80 border-gray-200/50 hover:bg-gray-50 hover:border-gray-300'
+                      }`}
+                      onClick={() => fetchGroupDetails(group.id)}
+                    >
+                      <div className="flex items-center space-x-2 min-w-0 flex-1">
+                        <FolderIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                            {group.name}
+                          </p>
+                          <div className="flex items-center space-x-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{group.item_count || 0} items</span>
+                            <span>•</span>
+                            <span>{new Date(group.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openAddCidModal(group.id);
+                          }}
+                          className="p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
+                          title="Add CID"
+                        >
+                          <PlusIcon className="w-3 h-3 text-green-500" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setGroupToRename(group);
+                            setRenameGroupName(group.name);
+                            setShowRenameGroupModal(true);
+                          }}
+                          className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                          title="Rename"
+                        >
+                          <PencilIcon className="w-3 h-3 text-blue-500" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <button
-                onClick={() => setShowAddToGroupModal(false)}
-                className={`p-1 rounded-md transition-all duration-200 ${
-                  darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                }`}
-              >
-                <XMarkIcon className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              {groupsLoading ? (
-                <div className="text-center py-6">
-                  <ArrowPathIcon className="w-5 h-5 animate-spin mx-auto mb-2" />
-                  <p className="text-xs text-gray-500">Loading groups...</p>
+            )}
+
+            {/* Analytics Section */}
+            {activeSection === 'analytics' && (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <ChartBarSolidIcon className="w-4 h-4 text-blue-500" />
+                  <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Analytics</h2>
                 </div>
-              ) : groups.length === 0 ? (
-                <div className="text-center py-6">
-                  <FolderIcon className="w-6 h-6 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">No groups available</p>
+
+                {/* Period Selector */}
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Period</label>
+                  <select
+                    value={selectedAnalyticsPeriod}
+                    onChange={(e) => {
+                      const days = parseInt(e.target.value);
+                      setSelectedAnalyticsPeriod(days);
+                      fetchAnalyticsDashboard(days);
+                    }}
+                    className={`w-full px-2 py-1.5 text-xs rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                      darkMode 
+                        ? 'bg-gray-700 border-gray-600 text-white' 
+                        : 'bg-white border-gray-300 text-gray-800'
+                    }`}
+                  >
+                    <option value={7}>Last 7 days</option>
+                    <option value={30}>Last 30 days</option>
+                    <option value={90}>Last 90 days</option>
+                    <option value={365}>Last year</option>
+                  </select>
+                </div>
+
+                {/* Realtime Stats */}
+                {realtimeAnalytics && (
+                  <div className={`p-3 rounded-lg border ${
+                    darkMode 
+                      ? 'bg-gray-800/50 border-gray-700/50' 
+                      : 'bg-gray-50/50 border-gray-200/50'
+                  }`}>
+                    <h4 className="text-xs font-medium mb-2 text-gray-700 dark:text-gray-300">Real-time</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Active:</span>
+                        <span className="ml-1 font-medium">{realtimeAnalytics.active_sessions || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Today:</span>
+                        <span className="ml-1 font-medium">{realtimeAnalytics.requests_today || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Analytics Dashboard */}
+                {analytics && (
+                  <div className="space-y-3">
+                    <div className={`p-3 rounded-lg border ${
+                      darkMode 
+                        ? 'bg-gray-800/50 border-gray-700/50' 
+                        : 'bg-gray-50/50 border-gray-200/50'
+                    }`}>
+                      <h4 className="text-xs font-medium mb-2 text-gray-700 dark:text-gray-300">Overview</h4>
+                      <div className="grid grid-cols-1 gap-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">Total Requests:</span>
+                          <span className="font-medium">{formatNumber(analytics.total_requests || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">Unique CIDs:</span>
+                          <span className="font-medium">{formatNumber(analytics.unique_cids || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">Data Served:</span>
+                          <span className="font-medium">{formatSize(analytics.total_bytes_served || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">Avg Response:</span>
+                          <span className="font-medium">{analytics.avg_response_time || 0}ms</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Top CIDs */}
+                    {analytics.top_cids && analytics.top_cids.length > 0 && (
+                      <div className={`p-3 rounded-lg border ${
+                        darkMode 
+                          ? 'bg-gray-800/50 border-gray-700/50' 
+                          : 'bg-gray-50/50 border-gray-200/50'
+                      }`}>
+                        <h4 className="text-xs font-medium mb-2 text-gray-700 dark:text-gray-300">Top CIDs</h4>
+                        <div className="space-y-1.5">
+                          {analytics.top_cids.slice(0, 5).map((item, index) => (
+                            <div key={index} className="flex items-center justify-between">
+                              <button
+                                onClick={() => navigate(`/search?q=${encodeURIComponent(item.cid)}`)}
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate mr-2 flex-1 text-left"
+                                title={item.cid}
+                              >
+                                {item.cid.slice(0, 12)}...
+                              </button>
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                {formatNumber(item.requests)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Export Button */}
+                    <button
+                      onClick={() => exportAnalytics('dashboard', selectedAnalyticsPeriod)}
+                      className={`w-full px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+                        darkMode 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      }`}
+                    >
+                      Export Analytics
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 p-4 sm:p-6 overflow-auto">
+          {/* Search Component */}
+          <div className="mb-4 sm:mb-6">
+            <Search onSearch={handleSearch} />
+          </div>
+
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-8 sm:py-12">
+              <ArrowPathIcon className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                {isRetrying ? 'Retrying...' : 'Loading content...'}
+              </p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className={`p-4 sm:p-6 rounded-xl border ${
+              darkMode 
+                ? 'bg-red-900/20 border-red-700/50 text-red-400' 
+                : 'bg-red-50 border-red-200 text-red-700'
+            }`}>
+              <div className="flex items-start space-x-3">
+                <ExclamationTriangleIcon className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-medium mb-2">Error Loading Content</h3>
+                  <p className="text-sm">{error}</p>
+                  <button
+                    onClick={handleRetry}
+                    disabled={isRetrying}
+                    className={`inline-flex items-center space-x-2 mt-4 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      isRetrying
+                        ? 'bg-gray-400 cursor-not-allowed text-white'
+                        : darkMode
+                        ? 'bg-red-700 hover:bg-red-600 text-white'
+                        : 'bg-red-600 hover:bg-red-700 text-white'
+                    }`}
+                  >
+                    {isRetrying ? (
+                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ArrowPathIcon className="w-4 h-4" />
+                    )}
+                    <span>{isRetrying ? 'Retrying...' : 'Retry'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Content Display */}
+          {meta && !loading && (
+            <div className="space-y-4 sm:space-y-6">
+              {/* Content Details Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                <div className="flex-1">
+                  <h2 className="text-lg sm:text-xl font-bold mb-2">
+                    Content Details
+                  </h2>
+                  <div className={`p-3 rounded-lg border ${
+                    darkMode 
+                      ? 'bg-gray-800/50 border-gray-700/50' 
+                      : 'bg-gray-50/50 border-gray-200/50'
+                  } backdrop-blur-sm`}>
+                    <p className="text-xs sm:text-sm font-mono text-blue-600 dark:text-blue-400 break-all mb-2">
+                      {query}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                      <span>Type: {meta.type}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span>Size: {formatSize(meta.size)}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Action Buttons - Stack vertically on mobile */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setShowAddToGroupModal(true)}
+                    className={`inline-flex items-center space-x-1 px-3 py-2 text-xs sm:text-sm rounded-md font-medium transition-colors ${
+                      darkMode 
+                        ? 'bg-green-600 hover:bg-green-700 text-white' 
+                        : 'bg-green-600 hover:bg-green-700 text-white'
+                    }`}
+                    title="Add to Group"
+                  >
+                    <FolderIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span>Add to Group</span>
+                  </button>
+
+                  <button
+                    onClick={toggleBookmark}
+                    className={`inline-flex items-center space-x-1 px-3 py-2 text-xs sm:text-sm rounded-md font-medium transition-colors ${
+                      isBookmarked
+                        ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                        : darkMode 
+                          ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                          : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                    }`}
+                    title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+                  >
+                    {isBookmarked ? (
+                      <BookmarkSolidIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                    ) : (
+                      <BookmarkIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                    )}
+                    <span className="hidden sm:inline">{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
+                  </button>
+
+                  {/* Share Button with Mobile-optimized Menu */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowShareOptions(!showShareOptions)}
+                      className={`inline-flex items-center space-x-1 px-3 py-2 text-xs sm:text-sm rounded-md font-medium transition-colors ${
+                        darkMode 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      }`}
+                    >
+                      <ShareIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span>Share</span>
+                    </button>
+                    
+                    {/* Mobile-optimized Share Menu */}
+                    {showShareOptions && (
+                      <div className={`absolute ${isMobile ? 'right-0' : 'right-0'} mt-1 w-40 rounded-lg shadow-xl border z-50 ${
+                        darkMode 
+                          ? 'bg-gray-800 border-gray-700' 
+                          : 'bg-white border-gray-200'
+                      } animate-fade-in`}>
+                        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+                          <span className="text-xs font-medium">Share</span>
+                          <button
+                            onClick={() => setShowShareOptions(false)}
+                            className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            <XMarkIcon className="w-3 h-3 text-gray-500" />
+                          </button>
+                        </div>
+                        
+                        <div className="p-1">
+                          <button
+                            onClick={handleCopyLink}
+                            className={`flex items-center space-x-2 w-full px-2 py-2 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                              copySuccess ? 'bg-green-50 dark:bg-green-900/20' : ''
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded flex items-center justify-center ${
+                              copySuccess ? 'bg-green-500' : 'bg-gray-100 dark:bg-gray-700'
+                            }`}>
+                              {copySuccess ? (
+                                <CheckIcon className="w-3 h-3 text-white" />
+                              ) : (
+                                <ClipboardDocumentIcon className="w-3 h-3 text-gray-600 dark:text-gray-300" />
+                              )}
+                            </div>
+                            <span className={copySuccess ? 'text-green-600 dark:text-green-400' : ''}>
+                              {copySuccess ? 'Copied!' : 'Copy Link'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Render folder browser or content preview */}
+              {meta.is_dir ? renderFolderBrowser() : renderPreview()}
+            </div>
+          )}
+
+          {/* Mobile-responsive modals */}
+          {/* Custom Filename Modal */}
+          {showFilenameModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+              <div className={`relative rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md transform transition-all duration-300 scale-100 border ${
+                darkMode 
+                  ? 'bg-gray-800/95 border-gray-700/50 backdrop-blur-xl' 
+                  : 'bg-white/95 border-gray-200/50 backdrop-blur-xl'
+              }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-base sm:text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    Download File
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowFilenameModal(false);
+                      setCustomFilename('');
+                      setDownloadCid('');
+                    }}
+                    className={`p-1 rounded-md transition-all duration-200 ${
+                      darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Filename
+                    </label>
+                    <input
+                      type="text"
+                      value={customFilename}
+                      onChange={(e) => setCustomFilename(e.target.value)}
+                      placeholder="Enter filename..."
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm ${
+                        darkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500'
+                      }`}
+                      autoFocus
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                    <button
+                      onClick={executeCustomDownload}
+                      disabled={!customFilename.trim()}
+                      className={`flex-1 px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 ${
+                        !customFilename.trim()
+                          ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg transform hover:scale-[1.02]'
+                      }`}
+                    >
+                      Download
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowFilenameModal(false);
+                        setCustomFilename('');
+                        setDownloadCid('');
+                      }}
+                      className={`px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 ${
+                        darkMode 
+                          ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                          : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                      }`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Add to Group Modal */}
+          {showAddToGroupModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+              <div className={`relative rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md border ${
+                darkMode 
+                  ? 'bg-gray-800/95 border-gray-700/50' 
+                  : 'bg-white/95 border-gray-200/50'
+              }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-base sm:text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    Add to Group
+                  </h2>
+                  <button
+                    onClick={() => setShowAddToGroupModal(false)}
+                    className={`p-1 rounded-md transition-colors ${
+                      darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                  </button>
+                </div>
+                
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {groups.length === 0 ? (
+                    <div className="text-center py-8">
+                      <FolderIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No groups available</p>
+                      <button
+                        onClick={() => {
+                          setShowAddToGroupModal(false);
+                          setShowCreateGroupModal(true);
+                        }}
+                        className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Create a group
+                      </button>
+                    </div>
+                  ) : (
+                    groups.map((group) => (
+                      <button
+                        key={group.id}
+                        onClick={() => addToGroup(group.id)}
+                        className={`w-full flex items-center space-x-3 p-3 rounded-lg border transition-colors text-left ${
+                          darkMode 
+                            ? 'border-gray-700 hover:bg-gray-700/50' 
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <FolderIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {group.name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {group.item_count || 0} items
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+                
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <button
                     onClick={() => {
                       setShowAddToGroupModal(false);
                       setShowCreateGroupModal(true);
                     }}
-                    className="mt-2 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    className={`w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg border-2 border-dashed transition-colors ${
+                      darkMode 
+                        ? 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300' 
+                        : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-700'
+                    }`}
                   >
-                    Create First Group
+                    <PlusIcon className="w-4 h-4" />
+                    <span className="text-sm">Create New Group</span>
                   </button>
                 </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Select a group:
-                    </p>
-                    <button
-                      onClick={() => {
-                        setShowAddToGroupModal(false);
-                        setShowCreateGroupModal(true);
+              </div>
+            </div>
+          )}
+
+          {/* Create Group Modal */}
+          {showCreateGroupModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+              <div className={`relative rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md border ${
+                darkMode 
+                  ? 'bg-gray-800/95 border-gray-700/50' 
+                  : 'bg-white/95 border-gray-200/50'
+              }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-base sm:text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    Create Group
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowCreateGroupModal(false);
+                      setNewGroupName('');
+                    }}
+                    className={`p-1 rounded-md transition-colors ${
+                      darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Group Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      placeholder="Enter group name..."
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm ${
+                        darkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500'
+                      }`}
+                      autoFocus
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && newGroupName.trim()) {
+                          createGroup();
+                        }
                       }}
-                      className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                    >
-                      + New Group
-                    </button>
+                    />
                   </div>
                   
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {groups.map((group) => (
-                      <button
-                        key={group.id}
-                        onClick={() => addToGroup(group.id)}
-                        className={`w-full p-2.5 rounded-md border transition-all duration-200 hover:shadow-sm text-left ${
-                          darkMode 
-                            ? 'bg-gray-700/20 border-gray-600/30 hover:bg-gray-700/40 hover:border-gray-600/50' 
-                            : 'bg-gray-50/30 border-gray-200/30 hover:bg-gray-100/60 hover:border-gray-300/50'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <FolderSolidIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{group.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {group.cid_count} CID{group.cid_count !== 1 ? 's' : ''}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                    <button
+                      onClick={createGroup}
+                      disabled={!newGroupName.trim()}
+                      className={`flex-1 px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 ${
+                        !newGroupName.trim()
+                          ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                          : 'bg-green-600 hover:bg-green-700 text-white hover:shadow-lg transform hover:scale-[1.02]'
+                      }`}
+                    >
+                      Create Group
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowCreateGroupModal(false);
+                        setNewGroupName('');
+                      }}
+                      className={`px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 ${
+                        darkMode 
+                          ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                          : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                      }`}
+                    >
+                      Cancel
+                    </button>
                   </div>
-                </>
-              )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Create Group Modal */}
-      {showCreateGroupModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className={`relative rounded-xl shadow-2xl p-4 w-full max-w-sm ${
-            darkMode 
-              ? 'bg-gray-800 border border-gray-700' 
-              : 'bg-white border border-gray-200'
-          }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <PlusIcon className="w-5 h-5 text-blue-500" />
-                <div>
-                  <h2 className={`text-md font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                    Create New Group
+          {/* Group Details Modal */}
+          {showGroupModal && selectedGroup && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+              <div className={`relative rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-2xl max-h-[90vh] overflow-hidden border ${
+                darkMode 
+                  ? 'bg-gray-800/95 border-gray-700/50' 
+                  : 'bg-white/95 border-gray-200/50'
+              }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-base sm:text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'} truncate`}>
+                    {selectedGroup.name}
                   </h2>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Enter a name for your group
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowCreateGroupModal(false);
-                  setNewGroupName('');
-                }}
-                className={`p-1 rounded-md transition-all duration-200 ${
-                  darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                }`}
-              >
-                <XMarkIcon className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                placeholder="Enter group name..."
-                className={`w-full px-3 py-2 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 ${
-                  darkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                    : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500'
-                }`}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    createGroup();
-                  }
-                }}
-              />
-
-              <div className="flex space-x-2">
-                <button
-                  onClick={createGroup}
-                  disabled={!newGroupName.trim()}
-                  className={`flex-1 px-3 py-2 rounded-md font-medium text-xs transition-all duration-200 ${
-                    !newGroupName.trim()
-                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg transform hover:scale-[1.02]'
-                  }`}
-                >
-                  Create Group
-                </button>
-                <button
-                  onClick={() => {
-                    setShowCreateGroupModal(false);
-                    setNewGroupName('');
-                  }}
-                  className={`px-3 py-2 rounded-md font-medium text-xs transition-all duration-200 ${
-                    darkMode 
-                      ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                  }`}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Manual CID to Group Modal */}
-      {showAddCidModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className={`relative rounded-xl shadow-2xl p-4 w-full max-w-sm transform transition-all duration-300 scale-100 border ${
-            darkMode 
-              ? 'bg-gray-800/95 border-gray-700/50 backdrop-blur-xl' 
-              : 'bg-white/95 border-gray-200/50 backdrop-blur-xl'
-          }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <div className={`p-1.5 rounded-md ${
-                  darkMode ? 'bg-gray-700' : 'bg-gray-100'
-                }`}>
-                  <PlusIcon className={`w-4 h-4 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`} />
-                </div>
-                <div>
-                  <h2 className={`text-md font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Add CID to Group</h2>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Enter a CID to add
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowAddCidModal(false);
-                  setManualCid('');
-                  setTargetGroupId(null);
-                }}
-                className={`p-1 rounded-md transition-all duration-200 ${
-                  darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                }`}
-              >
-                <XMarkIcon className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              <div>
-                <label className={`block text-xs font-medium mb-1 ${
-                  darkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  IPFS CID
-                </label>
-                <input
-                  type="text"
-                  value={manualCid}
-                  onChange={(e) => setManualCid(e.target.value)}
-                  placeholder="Qm... or baf..."
-                  className={`w-full px-3 py-2 rounded-md border text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 font-mono ${
-                    darkMode 
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                      : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500'
-                  }`}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      addManualCidToGroup();
-                    }
-                  }}
-                />
-                <p className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Enter a valid IPFS CID (starts with Qm or baf)
-                </p>
-              </div>
-
-              <div className="flex space-x-2">
-                <button
-                  onClick={addManualCidToGroup}
-                  disabled={!manualCid.trim()}
-                  className={`flex-1 px-3 py-2 rounded-md font-medium text-xs transition-all duration-200 ${
-                    !manualCid.trim()
-                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg transform hover:scale-[1.02]'
-                  }`}
-                >
-                  Add to Group
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddCidModal(false);
-                    setManualCid('');
-                    setTargetGroupId(null);
-                  }}
-                  className={`px-3 py-2 rounded-md font-medium text-xs transition-all duration-200 ${
-                    darkMode 
-                      ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                  }`}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Rename Group Modal */}
-      {showRenameGroupModal && groupToRename && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className={`relative rounded-xl shadow-2xl p-4 w-full max-w-sm transform transition-all duration-300 scale-100 border ${
-            darkMode 
-              ? 'bg-gray-800/95 border-gray-700/50 backdrop-blur-xl' 
-              : 'bg-white/95 border-gray-200/50 backdrop-blur-xl'
-          }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <div className={`p-1.5 rounded-md ${
-                  darkMode ? 'bg-gray-700' : 'bg-gray-100'
-                }`}>
-                  <PencilIcon className={`w-4 h-4 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`} />
-                </div>
-                <div>
-                  <h2 className={`text-md font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Rename Group</h2>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} truncate max-w-[200px]`}>
-                    Current: {groupToRename.name}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowRenameGroupModal(false);
-                  setGroupToRename(null);
-                  setRenameGroupName('');
-                }}
-                className={`p-1 rounded-md transition-all duration-200 ${
-                  darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                }`}
-              >
-                <XMarkIcon className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={renameGroupName}
-                onChange={e => setRenameGroupName(e.target.value)}
-                placeholder="Enter new group name..."
-                className={`w-full px-3 py-2 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 ${
-                  darkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                    : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500'
-                }`}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') renameGroup();
-                }}
-              />
-              <div className="flex space-x-2">
-                <button
-                  onClick={renameGroup}
-                  disabled={!renameGroupName.trim()}
-                  className={`flex-1 px-3 py-2 rounded-md font-medium text-xs transition-all duration-200 ${
-                    !renameGroupName.trim()
-                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg transform hover:scale-[1.02]'
-                  }`}
-                >
-                  Rename Group
-                </button>
-                <button
-                  onClick={() => {
-                    setShowRenameGroupModal(false);
-                    setGroupToRename(null);
-                    setRenameGroupName('');
-                  }}
-                  className={`px-3 py-2 rounded-md font-medium text-xs transition-all duration-200 ${
-                    darkMode 
-                      ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                  }`}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Custom Filename Download Modal */}
-      {showFilenameModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className={`relative rounded-xl shadow-2xl p-3 w-full max-w-xs transform transition-all duration-300 scale-100 border ${
-            darkMode 
-              ? 'bg-gray-800/95 border-gray-700/50 backdrop-blur-xl' 
-              : 'bg-white/95 border-gray-200/50 backdrop-blur-xl'
-          }`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <div className={`p-1 rounded-md ${
-                  darkMode ? 'bg-gray-700' : 'bg-gray-100'
-                }`}>
-                  <ArrowDownTrayIcon className={`w-3.5 h-3.5 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`} />
-                </div>
-                <div>
-                  <h2 className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                    Download File
-                  </h2>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Choose filename
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowFilenameModal(false);
-                  setCustomFilename('');
-                  setDownloadCid('');
-                }}
-                className={`p-1 rounded-md transition-all duration-200 ${
-                  darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                }`}
-              >
-                <XMarkIcon className="w-3.5 h-3.5 text-gray-500" />
-              </button>
-            </div>
-            
-            <div className="space-y-2">
-              <div>
-                <label className={`block text-xs font-medium mb-1 ${
-                  darkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Filename
-                </label>
-                <input
-                  type="text"
-                  value={customFilename}
-                  onChange={e => setCustomFilename(e.target.value)}
-                  placeholder="Enter filename..."
-                  className={`w-full px-2.5 py-1.5 rounded-md border text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 ${
-                    darkMode 
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                      : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500'
-                  }`}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') executeCustomDownload();
-                  }}
-                />
-                <p className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Suggested: {suggestedFilename}
-                </p>
-              </div>
-
-              <div className="flex space-x-2">
-                <button
-                  onClick={executeCustomDownload}
-                  disabled={!customFilename.trim()}
-                  className={`flex-1 px-3 py-1.5 rounded-md font-medium text-xs transition-all duration-200 ${
-                    !customFilename.trim()
-                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg transform hover:scale-[1.02]'
-                  }`}
-                >
-                  Download
-                </button>
-                <button
-                  onClick={() => {
-                    setShowFilenameModal(false);
-                    setCustomFilename('');
-                    setDownloadCid('');
-                  }}
-                  className={`px-3 py-1.5 rounded-md font-medium text-xs transition-all duration-200 ${
-                    darkMode 
-                      ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                  }`}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CID Analytics Modal */}
-      {showAnalyticsModal && selectedCidForAnalytics && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className={`relative rounded-xl shadow-2xl p-4 w-full max-w-lg max-h-[85vh] overflow-y-auto transform transition-all duration-300 scale-100 border ${
-            darkMode 
-              ? 'bg-gray-800/95 border-gray-700/50 backdrop-blur-xl' 
-              : 'bg-white/95 border-gray-200/50 backdrop-blur-xl'
-          }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <div className={`p-1.5 rounded-md ${
-                  darkMode ? 'bg-gray-700' : 'bg-gray-100'
-                }`}>
-                  <ChartBarIcon className={`w-5 h-5 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`} />
-                </div>
-                <div>
-                  <h2 className={`text-md font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                    CID Analytics
-                  </h2>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} font-mono`}>
-                    {selectedCidForAnalytics.substring(0, 20)}...
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowAnalyticsModal(false);
-                  setSelectedCidForAnalytics(null);
-                }}
-                className={`p-1 rounded-md transition-all duration-200 ${
-                  darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                }`}
-              >
-                <XMarkIcon className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-            {cidAnalytics[selectedCidForAnalytics] ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className={`p-3 rounded-lg border ${
-                    darkMode 
-                      ? 'bg-gray-700/20 border-gray-600/30' 
-                      : 'bg-gray-50/30 border-gray-200/30'
-                  }`}>
-                    <div className="flex items-center space-x-1.5 mb-1">
-                      <EyeIcon className="w-3.5 h-3.5 text-blue-500" />
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Views</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-800 dark:text-white">
-                      {formatNumber(cidAnalytics[selectedCidForAnalytics].total_views || 0)}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Last 7 days
-                    </p>
-                  </div>
-                  <div className={`p-3 rounded-lg border ${
-                    darkMode 
-                      ? 'bg-gray-700/20 border-gray-600/30' 
-                      : 'bg-gray-50/30 border-gray-200/30'
-                  }`}>
-                    <div className="flex items-center space-x-1.5 mb-1">
-                      <ArrowDownTrayIcon className="w-3.5 h-3.5 text-green-500" />
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Downloads</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-800 dark:text-white">
-                      {formatNumber(cidAnalytics[selectedCidForAnalytics].total_downloads || 0)}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Last 7 days
-                    </p>
-                  </div>
-                  <div className={`p-3 rounded-lg border ${
-                    darkMode 
-                      ? 'bg-gray-700/20 border-gray-600/30' 
-                      : 'bg-gray-50/30 border-gray-200/30'
-                  }`}>
-                    <div className="flex items-center space-x-1.5 mb-1">
-                      <UserGroupIcon className="w-3.5 h-3.5 text-purple-500" />
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Unique Users</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-800 dark:text-white">
-                      {formatNumber(cidAnalytics[selectedCidForAnalytics].unique_users || 0)}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Last 7 days
-                    </p>
-                  </div>
-                  <div className={`p-3 rounded-lg border ${
-                    darkMode 
-                      ? 'bg-gray-700/20 border-gray-600/30' 
-                      : 'bg-gray-50/30 border-gray-200/30'
-                  }`}>
-                    <div className="flex items-center space-x-1.5 mb-1">
-                      <ArrowTrendingUpIcon className="w-3.5 h-3.5 text-orange-500" />
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Peak Day</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-800 dark:text-white">
-                      {cidAnalytics[selectedCidForAnalytics].peak_day_views || 0}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {cidAnalytics[selectedCidForAnalytics].peak_day || 'N/A'}
-                    </p>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => openAddCidModal(selectedGroup.id)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        darkMode 
+                          ? 'bg-green-600 hover:bg-green-700 text-white' 
+                          : 'bg-green-600 hover:bg-green-700 text-white'
+                      }`}
+                      title="Add CID"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteGroup(selectedGroup.id, selectedGroup.name)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        darkMode 
+                          ? 'bg-red-600 hover:bg-red-700 text-white' 
+                          : 'bg-red-600 hover:bg-red-700 text-white'
+                      }`}
+                      title="Delete Group"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setShowGroupModal(false)}
+                      className={`p-1 rounded-md transition-colors ${
+                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                      }`}
+                    >
+                      <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                    </button>
                   </div>
                 </div>
-                {cidAnalytics[selectedCidForAnalytics].recent_activity && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-800 dark:text-white mb-2">
-                      Recent Activity
-                    </h3>
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {cidAnalytics[selectedCidForAnalytics].recent_activity.map((activity, index) => (
+                
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {selectedGroup.cids?.length || 0} CIDs in this group
+                  </p>
+                  
+                  {(!selectedGroup.cids || selectedGroup.cids.length === 0) ? (
+                    <div className="text-center py-8">
+                      <FolderIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No CIDs in this group</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedGroup.cids.map((cidData, index) => (
                         <div
                           key={index}
-                          className={`p-2.5 rounded-lg border flex items-center justify-between ${
+                          className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
                             darkMode 
-                              ? 'bg-gray-700/10 border-gray-600/20' 
-                              : 'bg-gray-50/20 border-gray-200/20'
+                              ? 'border-gray-700 hover:bg-gray-700/50' 
+                              : 'border-gray-200 hover:bg-gray-50'
                           }`}
                         >
-                          <div className="flex items-center space-x-2">
-                            {activity.action === 'view' ? (
-                              <EyeIcon className="w-3.5 h-3.5 text-blue-500" />
-                            ) : (
-                              <ArrowDownTrayIcon className="w-3.5 h-3.5 text-green-500" />
-                            )}
-                            <div>
-                              <p className="text-xs font-medium text-gray-800 dark:text-white capitalize">
-                                {activity.action}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {activity.user_agent ? activity.user_agent.substring(0, 40) + '...' : 'Unknown'}
-                              </p>
-                            </div>
-                          </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(activity.timestamp).toLocaleString()}
-                          </p>
+                          <button
+                            onClick={() => {
+                              setShowGroupModal(false);
+                              navigate(`/search?q=${encodeURIComponent(cidData.cid)}`);
+                            }}
+                            className="flex-1 text-left min-w-0"
+                          >
+                            <p className="text-sm font-mono text-blue-600 dark:text-blue-400 truncate">
+                              {cidData.cid}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Added {new Date(cidData.added_at).toLocaleDateString()}
+                            </p>
+                          </button>
+                          
+                          <button
+                            onClick={() => removeCidFromGroup(selectedGroup.id, cidData.cid)}
+                            className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors ml-2"
+                            title="Remove from group"
+                          >
+                            <XMarkIcon className="w-4 h-4 text-red-500" />
+                          </button>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => exportAnalytics('cid', 7)}
-                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    <ArrowDownTrayIcon className="w-3.5 h-3.5" />
-                    <span>Export Data</span>
-                  </button>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <ChartBarIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  Loading Analytics...
-                </p>
-                <ArrowPathIcon className="w-4 h-4 animate-spin mx-auto text-blue-500" />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+            </div>
+          )}
 
-      {/* Fullscreen Preview Modal */}
+          {/* Add CID to Group Modal */}
+          {showAddCidModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+              <div className={`relative rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md border ${
+                darkMode 
+                  ? 'bg-gray-800/95 border-gray-700/50' 
+                  : 'bg-white/95 border-gray-200/50'
+              }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-base sm:text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    Add CID to Group
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowAddCidModal(false);
+                      setManualCid('');
+                      setTargetGroupId(null);
+                    }}
+                    className={`p-1 rounded-md transition-colors ${
+                      darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      CID
+                    </label>
+                    <textarea
+                      value={manualCid}
+                      onChange={(e) => setManualCid(e.target.value)}
+                      placeholder="Enter CID..."
+                      rows={3}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm resize-none font-mono ${
+                        darkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500'
+                      }`}
+                      autoFocus
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                    <button
+                      onClick={addManualCidToGroup}
+                      disabled={!manualCid.trim()}
+                      className={`flex-1 px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 ${
+                        !manualCid.trim()
+                          ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                          : 'bg-green-600 hover:bg-green-700 text-white hover:shadow-lg transform hover:scale-[1.02]'
+                      }`}
+                    >
+                      Add CID
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddCidModal(false);
+                        setManualCid('');
+                        setTargetGroupId(null);
+                      }}
+                      className={`px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 ${
+                        darkMode 
+                          ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                          : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                      }`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Rename Group Modal */}
+          {showRenameGroupModal && groupToRename && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+              <div className={`relative rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md border ${
+                darkMode 
+                  ? 'bg-gray-800/95 border-gray-700/50' 
+                  : 'bg-white/95 border-gray-200/50'
+              }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-base sm:text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    Rename Group
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowRenameGroupModal(false);
+                      setGroupToRename(null);
+                      setRenameGroupName('');
+                    }}
+                    className={`p-1 rounded-md transition-colors ${
+                      darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      New Group Name
+                    </label>
+                    <input
+                      type="text"
+                      value={renameGroupName}
+                      onChange={(e) => setRenameGroupName(e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm ${
+                        darkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500'
+                      }`}
+                      autoFocus
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && renameGroupName.trim()) {
+                          renameGroup();
+                        }
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                    <button
+                      onClick={renameGroup}
+                      disabled={!renameGroupName.trim()}
+                      className={`flex-1 px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 ${
+                        !renameGroupName.trim()
+                          ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg transform hover:scale-[1.02]'
+                      }`}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowRenameGroupModal(false);
+                        setGroupToRename(null);
+                        setRenameGroupName('');
+                      }}
+                      className={`px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 ${
+                        darkMode 
+                          ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                          : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                      }`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CID Analytics Modal */}
+          {showAnalyticsModal && selectedCidForAnalytics && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+              <div className={`relative rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-2xl max-h-[90vh] overflow-hidden border ${
+                darkMode 
+                  ? 'bg-gray-800/95 border-gray-700/50' 
+                  : 'bg-white/95 border-gray-200/50'
+              }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-base sm:text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    CID Analytics
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowAnalyticsModal(false);
+                      setSelectedCidForAnalytics(null);
+                    }}
+                    className={`p-1 rounded-md transition-colors ${
+                      darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  <div className={`p-3 rounded-lg border ${
+                    darkMode 
+                      ? 'bg-gray-700/50 border-gray-600/50' 
+                      : 'bg-gray-50/50 border-gray-200/50'
+                  }`}>
+                    <p className="text-xs font-mono text-blue-600 dark:text-blue-400 break-all mb-2">
+                      {selectedCidForAnalytics}
+                    </p>
+                  </div>
+                  
+                  {cidAnalytics[selectedCidForAnalytics] ? (
+                    <div className="space-y-4">
+                      <div className={`p-3 rounded-lg border ${
+                        darkMode 
+                          ? 'bg-gray-700/50 border-gray-600/50' 
+                          : 'bg-gray-50/50 border-gray-200/50'
+                      }`}>
+                        <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">7-Day Statistics</h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Total Requests:</span>
+                            <span className="ml-2 font-medium">{formatNumber(cidAnalytics[selectedCidForAnalytics].total_requests || 0)}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Data Served:</span>
+                            <span className="ml-2 font-medium">{formatSize(cidAnalytics[selectedCidForAnalytics].total_bytes_served || 0)}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Avg Response:</span>
+                            <span className="ml-2 font-medium">{cidAnalytics[selectedCidForAnalytics].avg_response_time || 0}ms</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Last Access:</span>
+                            <span className="ml-2 font-medium">
+                              {cidAnalytics[selectedCidForAnalytics].last_accessed 
+                                ? new Date(cidAnalytics[selectedCidForAnalytics].last_accessed).toLocaleDateString()
+                                : 'Never'
+                              }
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {cidAnalytics[selectedCidForAnalytics].daily_stats && (
+                        <div className={`p-3 rounded-lg border ${
+                          darkMode 
+                            ? 'bg-gray-700/50 border-gray-600/50' 
+                            : 'bg-gray-50/50 border-gray-200/50'
+                        }`}>
+                          <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">Daily Breakdown</h4>
+                          <div className="space-y-2 max-h-32 overflow-y-auto">
+                            {cidAnalytics[selectedCidForAnalytics].daily_stats.map((day, index) => (
+                              <div key={index} className="flex justify-between items-center text-xs">
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  {new Date(day.date).toLocaleDateString()}
+                                </span>
+                                <div className="flex space-x-4">
+                                  <span className="font-medium">{day.requests} requests</span>
+                                  <span className="text-gray-500">{formatSize(day.bytes_served)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <ChartBarIcon className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Loading analytics...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Fullscreen Modal - Optimized for mobile */}
       {renderFullscreenModal()}
     </div>
   );
 };
 
 export default SearchResults;
-
-
 
