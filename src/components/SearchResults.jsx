@@ -63,7 +63,7 @@ const formatNumber = (num) => {
   return num.toString();
 };
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://silver-dec-v4-ubdd.onrender.com";
 
 const SearchResults = ({ darkMode }) => {
   const location = useLocation();
@@ -3524,5 +3524,6 @@ const SearchResults = ({ darkMode }) => {
 };
 
 export default SearchResults;
+
 
 
