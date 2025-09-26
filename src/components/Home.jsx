@@ -35,7 +35,7 @@ import {
   FolderIcon as FolderSolidIcon,
 } from '@heroicons/react/24/solid';
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://silver-dec-v4-ubdd.onrender.com";
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -2552,4 +2552,5 @@ const NexusBrowser = ({ darkMode }) => {
 };
 
 export default NexusBrowser;
+
 
