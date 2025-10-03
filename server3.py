@@ -141,10 +141,13 @@ def classify_traffic_source(referrer, user_agent):
 
 def track_view(cid, request, gateway_used=None, user_id=None):
     """Track a view event - ONLY for uploaded CIDs"""
+    if not user_id:
+        return  # Skip tracking if no user_id provided
+        
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT 1 FROM uploads WHERE cid = ? LIMIT 1", (cid,))
+        c.execute("SELECT 1 FROM uploads WHERE cid = ? AND user_id = ? LIMIT 1", (cid, user_id))
         if not c.fetchone():
             return
 
@@ -170,10 +173,13 @@ def track_view(cid, request, gateway_used=None, user_id=None):
 
 def track_download(cid, request, gateway_used=None, file_size=0, completed=True, user_id=None):
     """Track a download event - ONLY for uploaded CIDs"""
+    if not user_id:
+        return  # Skip tracking if no user_id provided
+        
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT 1 FROM uploads WHERE cid = ? LIMIT 1", (cid,))
+        c.execute("SELECT 1 FROM uploads WHERE cid = ? AND user_id = ? LIMIT 1", (cid, user_id))
         if not c.fetchone():
             return
 
@@ -557,10 +563,12 @@ def get_extension(content_type):
 def save_history():
     data = request.json
     cid = data.get("cid")
-    user_id = data.get("user_id", "anonymous")
+    user_id = data.get("user_id")
     
     if not cid:
         return jsonify({"error": "Missing CID"}), 400
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
 
     try:
         conn = get_db_connection()
@@ -573,7 +581,9 @@ def save_history():
 
 @app.route("/history", methods=["GET"])
 def get_history():
-    user_id = request.args.get("user_id", "anonymous")
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
         
     try:
         conn = get_db_connection()
@@ -588,10 +598,12 @@ def get_history():
 def delete_history_entry():
     data = request.get_json()
     cid = data.get("cid")
-    user_id = data.get("user_id", "anonymous")
+    user_id = data.get("user_id")
 
     if not cid:
         return jsonify({"error": "CID not provided"}), 400
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
 
     try:
         conn = get_db_connection()
@@ -607,13 +619,15 @@ def delete_history_entry():
 def add_bookmark():
     data = request.json
     cid = data.get("cid")
-    user_id = data.get("user_id", "anonymous")
+    user_id = data.get("user_id")
     title = data.get("title", f"Content {cid[:8]}..." if cid else "Untitled")
     content_type = data.get("type", "unknown")
     size = data.get("size", 0)
 
     if not cid:
         return jsonify({"error": "Missing CID"}), 400
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
 
     try:
         conn = get_db_connection()
@@ -630,7 +644,9 @@ def add_bookmark():
 
 @app.route("/bookmarks", methods=["GET"])
 def get_bookmarks():
-    user_id = request.args.get("user_id", "anonymous")
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
         
     try:
         conn = get_db_connection()
@@ -657,10 +673,12 @@ def get_bookmarks():
 def delete_bookmark():
     data = request.get_json()
     cid = data.get("cid")
-    user_id = data.get("user_id", "anonymous")
+    user_id = data.get("user_id")
 
     if not cid:
         return jsonify({"error": "CID not provided"}), 400
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
 
     try:
         conn = get_db_connection()
@@ -675,7 +693,9 @@ def delete_bookmark():
 
 @app.route("/bookmarks/check/<cid>", methods=["GET"])
 def check_bookmark(cid):
-    user_id = request.args.get("user_id", "anonymous")
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
         
     try:
         conn = get_db_connection()
@@ -691,7 +711,7 @@ def check_bookmark(cid):
 def save_upload():
     data = request.json
     cid = data.get("cid")
-    user_id = data.get("user_id", "anonymous")
+    user_id = data.get("user_id")
     fileName = data.get("fileName", "Untitled")
     fileSize = data.get("fileSize", 0)
     fileType = data.get("fileType", "unknown")
@@ -700,6 +720,8 @@ def save_upload():
 
     if not cid:
         return jsonify({"error": "Missing CID"}), 400
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
 
     try:
         conn = get_db_connection()
@@ -723,7 +745,9 @@ def save_upload():
 
 @app.route("/uploads", methods=["GET"])
 def get_uploads():
-    user_id = request.args.get("user_id", "anonymous")
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
         
     try:
         conn = get_db_connection()
@@ -751,10 +775,12 @@ def get_uploads():
 def delete_upload():
     data = request.get_json()
     cid = data.get("cid")
-    user_id = data.get("user_id", "anonymous")
+    user_id = data.get("user_id")
 
     if not cid:
         return jsonify({"error": "CID not provided"}), 400
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
 
     try:
         conn = get_db_connection()
@@ -773,10 +799,12 @@ def create_group():
     """Create a new group with custom name"""
     data = request.json
     name = data.get("name")
-    user_id = data.get("user_id", "anonymous")
+    user_id = data.get("user_id")
 
     if not name or not name.strip():
         return jsonify({"error": "Group name is required"}), 400
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
 
     name = name.strip()
 
@@ -806,7 +834,9 @@ def create_group():
 @app.route("/groups", methods=["GET"])
 def get_groups():
     """Get all groups with their CIDs - FIXED CID field mapping"""
-    user_id = request.args.get("user_id", "anonymous")
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
         
     try:
         conn = get_db_connection()
@@ -1747,7 +1777,9 @@ def preview_private(cid):
 @app.route("/analytics/dashboard", methods=["GET"])
 def get_analytics_dashboard():
     """Get comprehensive analytics dashboard data for uploaded CIDs only"""
-    user_id = request.args.get("user_id", "anonymous")
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id - authentication required"}), 401
         
     try:
         conn = get_db_connection()
