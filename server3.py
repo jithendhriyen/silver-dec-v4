@@ -344,7 +344,6 @@ def init_db():
         CREATE TABLE IF NOT EXISTS cid_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             cid TEXT NOT NULL,
-            user_id TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -353,13 +352,11 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS bookmarks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cid TEXT NOT NULL,
-            user_id TEXT,
+            cid TEXT NOT NULL UNIQUE,
             title TEXT NOT NULL,
             type TEXT,
             size INTEGER DEFAULT 0,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE (cid, user_id)
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -367,14 +364,12 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS uploads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cid TEXT NOT NULL,
-            user_id TEXT,
+            cid TEXT NOT NULL UNIQUE,
             fileName TEXT NOT NULL,
             fileSize INTEGER DEFAULT 0,
             fileType TEXT,
             visibility TEXT DEFAULT 'public',
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE (cid, user_id)
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -383,7 +378,6 @@ def init_db():
         CREATE TABLE IF NOT EXISTS analytics_views (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             cid TEXT NOT NULL,
-            user_id TEXT,
             ip_address TEXT,
             user_agent TEXT,
             referrer TEXT,
@@ -397,7 +391,6 @@ def init_db():
         CREATE TABLE IF NOT EXISTS analytics_downloads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             cid TEXT NOT NULL,
-            user_id TEXT,
             ip_address TEXT,
             user_agent TEXT,
             referrer TEXT,
@@ -413,7 +406,6 @@ def init_db():
         CREATE TABLE IF NOT EXISTS analytics_traffic_sources (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             cid TEXT NOT NULL,
-            user_id TEXT,
             source_type TEXT NOT NULL,
             source_value TEXT,
             ip_address TEXT,
@@ -425,10 +417,8 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS groups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            user_id TEXT,
-            created_at TEXT NOT NULL,
-            UNIQUE (name, user_id)
+            name TEXT UNIQUE NOT NULL,
+            created_at TEXT NOT NULL
         )
     ''')
 
@@ -442,6 +432,58 @@ def init_db():
             FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
         )
     ''')
+
+    # Add user_id columns to existing tables if they don't exist
+    try:
+        c.execute("ALTER TABLE cid_history ADD COLUMN user_id TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    try:
+        c.execute("ALTER TABLE bookmarks ADD COLUMN user_id TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    try:
+        c.execute("ALTER TABLE uploads ADD COLUMN user_id TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    try:
+        c.execute("ALTER TABLE analytics_views ADD COLUMN user_id TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    try:
+        c.execute("ALTER TABLE analytics_downloads ADD COLUMN user_id TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    try:
+        c.execute("ALTER TABLE analytics_traffic_sources ADD COLUMN user_id TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    try:
+        c.execute("ALTER TABLE groups ADD COLUMN user_id TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    # Drop old unique constraints and create new ones
+    try:
+        c.execute("DROP INDEX IF EXISTS idx_bookmarks_cid_unique")
+        c.execute("DROP INDEX IF EXISTS idx_uploads_cid_unique")
+        c.execute("DROP INDEX IF EXISTS idx_groups_name_unique")
+    except:
+        pass
+
+    # Create new unique constraints with user_id
+    try:
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_cid_user ON bookmarks(cid, user_id)")
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_uploads_cid_user ON uploads(cid, user_id)")
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_name_user ON groups(name, user_id)")
+    except:
+        pass
 
     # Add indexes for better query performance
     c.execute('CREATE INDEX IF NOT EXISTS idx_history_cid ON cid_history(cid)')
@@ -2035,4 +2077,3 @@ if __name__ == "__main__":
     print("✅ ALL CRITICAL BUGS FIXED - Complete working backend!")
     print("🔧 GROUP CID MAPPING BUG FIXED - File sizes should now display correctly!")
     app.run(host="0.0.0.0", port=8000, debug=False, threaded=True)
-
