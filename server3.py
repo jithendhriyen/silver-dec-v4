@@ -33,7 +33,6 @@ GATEWAYS = {
     'ipfs_io': "https://ipfs.io/ipfs/",
     'cloudflare': "https://cloudflare-ipfs.com/ipfs/",
     'pinata': "https://gateway.pinata.cloud/ipfs/",
-    'local': "http://127.0.0.1:8080/ipfs/"
     'local': "http://13.60.17.161:8080/ipfs/"
 }
 
@@ -2036,3 +2035,4 @@ if __name__ == "__main__":
     print("✅ ALL CRITICAL BUGS FIXED - Complete working backend!")
     print("🔧 GROUP CID MAPPING BUG FIXED - File sizes should now display correctly!")
     app.run(host="0.0.0.0", port=8000, debug=False, threaded=True)
+
